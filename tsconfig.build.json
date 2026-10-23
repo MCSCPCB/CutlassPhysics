@@ -1,0 +1,13 @@
+{
+  // 生成类型声明；JavaScript 由 build.mjs 打包。
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    // 排除标记为 @internal 的成员。
+    "stripInternal": true,
+    "rootDir": "src",
+    "outDir": "dist/types"
+  }
+}

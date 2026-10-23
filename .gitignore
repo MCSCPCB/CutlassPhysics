@@ -1,0 +1,21 @@
+# 公开仓库文件清单。
+/*
+!/src/
+!/examples/
+!/README.md
+!/LICENSE
+!/THIRD-PARTY-NOTICES.txt
+!/package.json
+!/package-lock.json
+!/tsconfig.json
+!/tsconfig.build.json
+!/build.mjs
+!/.gitignore
+
+# 构建产物和本地文件。
+node_modules/
+dist/
+*.tsbuildinfo
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,13 @@
+{
+  // 示例中的包名解析到库源码。
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": [],
+    "paths": {
+      "cutlass-physics": ["../src/index"]
+    }
+  },
+  "include": ["."]
+}

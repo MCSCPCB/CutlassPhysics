@@ -1,0 +1,34 @@
+{
+  "name": "cutlass-physics",
+  "version": "0.0.0",
+  "private": true,
+  "description": "面向 Minecraft 基岩版 Script API 的刚体物理库",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist",
+    "THIRD-PARTY-NOTICES.txt"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "node build.mjs && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p examples/tsconfig.json",
+    "check": "npm run typecheck && npm run build"
+  },
+  "peerDependencies": {
+    "@minecraft/server": "*"
+  },
+  "devDependencies": {
+    "@minecraft/server": "2.10.0",
+    "esbuild": "0.28.2",
+    "typescript": "6.0.3"
+  }
+}
