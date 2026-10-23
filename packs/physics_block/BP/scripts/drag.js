@@ -1,4 +1,4 @@
-const REACH = 6;
+import { pickStructure } from "./picking.js";
 const BREAK_DISTANCE = 14;
 
 export class DragController {
@@ -10,42 +10,26 @@ export class DragController {
     const drag = this.players.get(playerId);
     if (!drag) return;
     this.players.delete(playerId);
-    if (drag.anchor.isValid) drag.anchor.remove();
+    drag.constraint.remove();
   }
 
   toggle(player, session) {
     if (this.players.has(player.id)) { this.release(player.id); return; }
-    const origin = player.getHeadLocation(), direction = player.getViewDirection();
-    const hit = session.physics.rayCast(origin, direction, { maxDistance: REACH, includeBlocks: false, collisionMask: 1 });
-    if (!hit?.body || !session.structures.records.has(hit.body)) return;
-    const terrain = player.dimension.getBlockFromRay(origin, direction, { maxDistance: REACH, includeLiquidBlocks: false, includePassableBlocks: false });
-    if (terrain) {
-      const location = terrain.block.location, face = terrain.faceLocation;
-      const distance = Math.hypot(location.x + face.x - origin.x, location.y + face.y - origin.y, location.z + face.z - origin.z);
-      if (distance + 0.01 < hit.distance) return;
-    }
-    const anchor = session.physics.createBody({
-      type: "kinematic", location: hit.point, gravityScale: 0,
-      shapes: [{ type: "sphere", radius: 0.01, collisionGroup: 0, collisionMask: 0 }],
-      userData: { kind: "grab" },
+    const hit = pickStructure(player, session);
+    if (!hit) return;
+    for (const [id, drag] of this.players) if (drag.body === hit.body) this.release(id);
+    const constraint = hit.body.createDrag({ anchor: hit.point });
+    this.players.set(player.id, {
+      player, body: hit.body, constraint, dimensionId: player.dimension.id,
+      localPoint: hit.body.worldToLocal(hit.point), distance: Math.max(2, Math.min(8, hit.distance)),
+      yaw: player.getRotation().y, rotation: hit.body.rotation,
     });
-    try {
-      const joint = session.physics.createJoint({
-        type: "ball", bodyA: hit.body, bodyB: anchor, anchor: hit.point,
-        spring: { frequency: 4, dampingRatio: 1 },
-      });
-      this.players.set(player.id, {
-        player, body: hit.body, anchor, joint, dimensionId: player.dimension.id,
-        localPoint: hit.body.worldToLocal(hit.point), distance: Math.max(2, Math.min(8, hit.distance)),
-      });
-      hit.body.wakeUp();
-    } catch (error) { this.players.delete(player.id); anchor.remove(); throw error; }
   }
 
   update() {
     for (const [id, drag] of this.players) {
-      const { player, body, anchor, joint } = drag;
-      if (!player.isValid || player.dimension.id !== drag.dimensionId || !body.isValid || !anchor.isValid || !joint.isValid || heldItem(player) !== "minecraft:slime_ball") {
+      const { player, body, constraint } = drag;
+      if (!player.isValid || player.dimension.id !== drag.dimensionId || !constraint.isValid || heldItem(player) !== "minecraft:slime_ball") {
         this.release(id);
         continue;
       }
@@ -55,8 +39,12 @@ export class DragController {
         this.release(id);
         continue;
       }
-      anchor.location = { x: head.x + direction.x * drag.distance, y: head.y + direction.y * drag.distance, z: head.z + direction.z * drag.distance };
-      body.wakeUp();
+      const halfYaw = -(player.getRotation().y - drag.yaw) * Math.PI / 360;
+      const s = Math.sin(halfYaw), c = Math.cos(halfYaw), q = drag.rotation;
+      constraint.setTarget(
+        { x: head.x + direction.x * drag.distance, y: head.y + direction.y * drag.distance, z: head.z + direction.z * drag.distance },
+        { x: c * q.x + s * q.z, y: c * q.y + s * q.w, z: c * q.z - s * q.x, w: c * q.w - s * q.y },
+      );
     }
   }
 }

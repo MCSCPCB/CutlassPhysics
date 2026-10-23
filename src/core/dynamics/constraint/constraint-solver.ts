@@ -7,6 +7,8 @@ export abstract class ConstraintSolver {
   b1: RigidBody | null = null;
   b2: RigidBody | null = null;
   addedToIsland = false;
+  /** 最近一次软接触子步的步长，用于关节热启动。 */
+  softSubstepDt = 0;
 
   abstract preSolveVelocity(timeStep: TimeStep): void;
   abstract warmStart(timeStep: TimeStep): void;

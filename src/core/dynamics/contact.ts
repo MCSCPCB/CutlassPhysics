@@ -1,7 +1,9 @@
 // 移植自 OimoPhysics src/oimo/dynamics/{Contact,ContactLink}.hx（MIT，见 Credits.md）
 import { CachedDetectorData } from "../collision/narrowphase/cached-detector-data.js";
+import { GeometryType } from "../collision/geometry/geometry.js";
 import type { Detector } from "../collision/narrowphase/detector.js";
 import { DetectorResult } from "../collision/narrowphase/detector-result.js";
+import { SoftBoxBoxDetector } from "../collision/narrowphase/soft-box-box-detector.js";
 import {
   ALTERNATIVE_CONTACT_POSITION_CORRECTION_ALGORITHM,
   ALTERNATIVE_POSITION_CORRECTION_DEPTH_THRESHOLD,
@@ -13,6 +15,8 @@ import { ManifoldUpdater } from "./constraint/contact/manifold-updater.js";
 import type { RigidBody } from "./rigidbody/rigid-body.js";
 import { RigidBodyType } from "./rigidbody/rigid-body-config.js";
 import type { Shape } from "./rigidbody/shape.js";
+
+const softBoxDetector = new SoftBoxBoxDetector();
 
 /** 刚体上的接触链表节点：通过它找到接触和另一个刚体 */
 export class ContactLink {
@@ -113,6 +117,8 @@ export class Contact {
     if (this.detector === null) return;
     const s1 = this.s1!, s2 = this.s2!, result = this.detectorResult;
     const b1 = this.b1!, b2 = this.b2!;
+    const boxPair = s1.geom.type === GeometryType.BOX && s2.geom.type === GeometryType.BOX;
+    const detector = speculative && boxPair ? softBoxDetector : this.detector;
     let margin = s1.speculativeMargin + s2.speculativeMargin;
     // 动态接触按相对速度计算预测距离；静态接触使用运动方形状的预测距离。
     if (margin > 0 && b1.type !== RigidBodyType.STATIC && b2.type !== RigidBodyType.STATIC) {
@@ -124,13 +130,28 @@ export class Contact {
       margin = w.speculativeDistance + w.speculativeTick() * speed;
       if (margin > w.maxSpeculativeDistance) margin = w.maxSpeculativeDistance;
     }
-    this.detector.detect(result, s1.geom, s2.geom, s1.transform, s2.transform, this.cachedDetectorData, margin);
+    // 盒子地形固定为检测器的第一侧，再还原接触双方的顺序。
+    if (speculative && b1.type !== RigidBodyType.STATIC && b2.type === RigidBodyType.STATIC && boxPair) {
+      detector.detect(result, s2.geom, s1.geom, s2.transform, s1.transform, this.cachedDetectorData, margin);
+      result.nx = -result.nx; result.ny = -result.ny; result.nz = -result.nz;
+      for (let i = 0; i < result.numPoints; i++) {
+        const p = result.points[i], x = p.p1x, y = p.p1y, z = p.p1z;
+        p.p1x = p.p2x; p.p1y = p.p2y; p.p1z = p.p2z;
+        p.p2x = x; p.p2y = y; p.p2z = z;
+      }
+    } else {
+      detector.detect(result, s1.geom, s2.geom, s1.transform, s2.transform, this.cachedDetectorData, margin);
+    }
     // 通过形状过滤器剔除接触点，默认不过滤。
     if (s1.contactFilter !== null) s1.contactFilter(s1, result, true, s2);
     if (s2.contactFilter !== null) s2.contactFilter(s2, result, false, s1);
     const found = result.numPoints > 0;
     if (!speculative) this.touching = found;
     if (found) {
+      // 接触法线改变后，旧编号不再代表同一承重面。
+      if (speculative && this.manifold.nX * result.nx + this.manifold.nY * result.ny + this.manifold.nZ * result.nz <= 0.99) {
+        this.manifold.clear();
+      }
       this.manifold.buildBasis(result.nx, result.ny, result.nz);
       // 穿透较深时改用另一种位置修正算法（默认是 split impulse）
       this.contactConstraint.positionCorrectionAlgorithm =
@@ -141,7 +162,7 @@ export class Contact {
       if (result.incremental) {
         this.updater.incrementalUpdate(result, this.b1!.transform, this.b2!.transform, margin);
       } else {
-        this.updater.totalUpdate(result, this.b1!.transform, this.b2!.transform);
+        this.updater.totalUpdate(result, this.b1!.transform, this.b2!.transform, speculative);
       }
     } else {
       this.manifold.clear();

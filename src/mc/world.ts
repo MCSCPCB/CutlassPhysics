@@ -37,6 +37,7 @@ import type { Quaternion, Vector3 } from "./math.js";
 import { DEFAULT_MATERIALS, materialFriction, terrainFriction } from "./materials.js";
 import { createAfterEvents, type SignalImpl } from "./signal.js";
 import type { BodyBlock, ShapeOptions } from "./shapes.js";
+import { mergeBlockShapes } from "./compound-boxes.js";
 import {
   captureBody, captureJoint, checkCapturedBodies, copyJson, readSnapshot, restoreContents, type PhysicsSnapshot, type RestoreOptions, type SnapshotOptions, type SnapshotShapeCache,
 } from "./snapshot.js";
@@ -46,7 +47,9 @@ import type { TerrainOptions } from "./terrain.js";
  * 物理世界的时间推进方式。
  *
  * @remarks
- * `"auto"` 表示每个 tick 自动推进一次，内部使用 `system.runInterval`。`"manual"` 表示不自动推进，需要调用 {@link PhysicsWorld.step}。
+ *
+ * - `"auto"`：每个 tick 自动推进一次，内部使用 `system.runInterval`。
+ * - `"manual"`：由 {@link PhysicsWorld.step} 推进。
  */
 export type StepMode = "auto" | "manual";
 
@@ -99,32 +102,39 @@ export interface PhysicsWorldOptions {
    * 世界底部的虚空海。
    *
    * @remarks
-   * 位置低于 startY 时，按深度施加反重力冲量及阻力；深度系数乘以深度为 1 时抵消重力。
-   * 默认 startY 为 -105，depthGradient 和 drag 为 1，各维度相同。false 表示关闭。
+   *
+   * - 位置低于 `startY` 时，按深度施加反重力冲量及阻力；深度系数乘以深度为 `1` 时抵消重力。
+   * - 默认 `startY` 为 `-105`，`depthGradient` 和 `drag` 为 `1`，各维度相同。
+   * - `false` 表示关闭。
    */
   voidSea?: VoidSeaOptions | false;
   /**
    * 原版爆炸是否推动刚体，默认为 true。
    *
    * @remarks
-   * 爆炸冲量在下一步施加，随距离衰减；方块遮挡时保留 35%。
-   * 一批冲量的速度变化上限为 12 格/秒，角速度变化上限为 2.5 弧度/秒。
+   *
+   * - 爆炸冲量在下一步施加，随距离衰减；方块遮挡时保留 35%。
+   * - 一批冲量的速度变化上限为 12 格/秒，角速度变化上限为 2.5 弧度/秒。
    */
   explosions?: boolean;
   /**
    * 是否破坏被刚体撞碎的世界方块，默认为 true。
    *
    * @remarks
-   * 撞击达到 fragileImpactSpeed 时触发 blockBreak，并在下一 tick 破坏方块、掉落物品。
-   * false 仅保留事件。刚体上的方块始终只触发事件，不自动移除形状。
+   *
+   * - 撞击达到 `fragileImpactSpeed` 时触发 `blockBreak`，并在下一 tick 破坏方块、掉落物品。
+   * - `false` 仅保留事件。
+   * - 刚体上的方块始终只触发事件，不自动移除形状。
    */
   breakFragileBlocks?: boolean;
   /**
    * 流体交互选项，默认开启。
    *
    * @remarks
-   * 仅在启用地形时生效，包含浮力、阻力、水流和气腔。参数见 {@link FluidOptions}。
-   * 浮力作用于浸没部分的形心；未平衡且无接触的刚体保持活动。false 表示关闭。
+   *
+   * - 仅在启用地形时生效，包含浮力、阻力、水流和气腔。参数见 {@link FluidOptions}。
+   * - 浮力作用于浸没部分的形心；未平衡且无接触的刚体保持活动。
+   * - `false` 表示关闭。
    */
   fluids?: FluidOptions | false;
   /**
@@ -138,17 +148,22 @@ export interface PhysicsWorldOptions {
    * 每次推进的子步数，默认为 4。
    *
    * @remarks
-   * 每步仅检测一次碰撞，子步执行求解和积分。
-   * 连续 3 次求解超过预算时减少 1 个子步，最少 2 个；连续 100 次低于预算三分之一时增加 1 个，至设定值。
-   * 调整子步数不改变单次推进的总时间。
+   *
+   * - 每步仅检测一次碰撞，子步执行求解和积分。
+   * - 连续 3 次求解超过预算时减少 1 个子步，最少 2 个。
+   * - 连续 100 次低于预算三分之一时增加 1 个子步，至设定值。
+   * - 质量比不小于 8 的接触组合及较重的自由刚体保留至少 `min(设定值, 4)` 个子步。
+   * - 调整子步数不改变单次推进的总时间。
    */
   substeps?: number;
   /**
    * 每次推进的目标求解耗时，单位为毫秒，默认为 12。
    *
    * @remarks
-   * 作为子步调整依据，不是耗时上限；计入流体和悬浮计算，不计方块读取。
-   * 必须大于 0，Infinity 禁用预算调整。规则见 {@link PhysicsWorldOptions.substeps}。
+   *
+   * - 作为子步调整依据，不是耗时上限；规则见 {@link PhysicsWorldOptions.substeps}。
+   * - 计入流体和悬浮计算，不计方块读取。
+   * - 必须大于 `0`，`Infinity` 禁用预算调整。
    */
   timeBudgetMs?: number;
   /**
@@ -162,8 +177,9 @@ export interface PhysicsWorldOptions {
    * 方块形状与物理属性的登记表。
    *
    * @remarks
-   * 作用于地形、刚体方块及易碎判定，并随存档保存。{@link blockShapes} 使用相同登记表时解析结果一致。
-   * 格式见 {@link BlockDefinitions}。
+   *
+   * - 作用于地形、刚体方块及易碎判定，并随存档保存。
+   * - {@link blockShapes} 使用相同登记表时解析结果一致。格式见 {@link BlockDefinitions}。
    */
   blocks?: BlockDefinitions;
 }
@@ -176,7 +192,9 @@ export interface RayCastOptions {
    * 最大检测距离，单位为格，须为正的有限数。
    *
    * @remarks
-   * 射线默认值为 100。扫掠默认使用 translation 的长度，指定后忽略超出距离的命中。
+   *
+   * - 射线默认值为 `100`。
+   * - 扫掠默认使用 `translation` 的长度，指定后忽略超出距离的命中。
    */
   maxDistance?: number;
   /**
@@ -307,6 +325,7 @@ export class PhysicsWorld {
   /** 撞碎世界里的易碎方块；已经排队、下一 tick 破坏的方块位置 */
   private readonly breakFragile: boolean;
   private readonly pendingBreaks = new Set<string>();
+  private readonly brokenShapes = new Set<Shape>();
   private runId = -1;
   /** checkChunks 轮到第几个刚体 */
   private chunkCursor = 0;
@@ -354,15 +373,18 @@ export class PhysicsWorld {
     this.timeBudget = checkBudget(options.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS);
     this.substepCount = substeps;
     this.activeSubsteps = substeps;
-    // 接触用软接触求解（见 core/dynamics/constraint/solver/soft-contact-solver.ts），每个 tick 只检测一次碰撞，子步在内核里做，
-    // 每个子步带偏置、松弛各解一遍；撞击、反弹、限速、休眠的参数见 core World 的 soft* 默认值。关节仍然用 PGS
+    // 每个 tick 检测一次碰撞；接触在子步中求解，关节使用 PGS。
     this.core.numVelocityIterations = SOLVER_VELOCITY_ITERATIONS;
     this.core.softContacts = true;
-    this.core.softIterations = 1;
-    this.core.softRelaxIterations = 1;
+    this.core.softIterations = 5;
+    this.core.softRelaxIterations = 5;
+    this.core.softImpactIterations = 10;
+    this.core.softDampingRatio = 7;
+    this.core.softTolerance = 1e-4;
+    this.core.softAdaptiveIterations = true;
     this.core.softSubsteps = substeps;
-    // 地形接触面内移 0.01 格，减少接缝处的抖动。
-    this.core.softContactSkin = -0.01;
+    this.core.pairSpeculativeSpeed = Infinity;
+    this.core.softContactSkin = 0;
     this.core.contactManager.maxRestitution = true;
     this.core.contactManager.listener = this.contactListener;
 
@@ -432,8 +454,10 @@ export class PhysicsWorld {
    * 生成独立的刚体和关节快照，默认省略 userData。
    *
    * @remarks
-   * 不包含地形缓存、事件订阅和求解缓存。冻结状态保留速度，恢复时重新请求地形。
-   * 世界动态属性存储见 {@link PhysicsWorldStore}。
+   *
+   * - 不包含地形缓存、事件订阅和求解缓存。
+   * - 冻结状态保留速度，恢复时重新请求地形。
+   * - 世界动态属性存储见 {@link PhysicsWorldStore}。
    *
    * @param options
    * 用 `encodeUserData` 把每个刚体的 userData 转成可存的 JSON 值；省略时不保存 userData。
@@ -483,12 +507,18 @@ export class PhysicsWorld {
    * 校验快照并恢复为新世界。
    *
    * @remarks
-   * 失败时释放新建资源。地形重新读取，原休眠刚体在确认支撑后可再次休眠。
-   * 事件订阅不包含在快照中。
+   *
+   * - 失败时释放新建资源。
+   * - 地形重新读取，原休眠刚体在确认支撑后可再次休眠。
+   * - 事件订阅不包含在快照中。
    *
    * @param dimension 恢复到的维度，必须与保存时相同。
    * @param input {@link PhysicsWorld.createSnapshot} 的结果或经过 JSON 往返后的对象。
-   * @param options 覆盖已保存的世界设置。原世界使用 terrain.collision 时须重新提供；decodeUserData 用于恢复自定义数据。
+   * @param options 覆盖已保存的世界设置。
+   *
+   * - 原世界使用 `terrain.collision` 时须重新提供。
+   * - `decodeUserData` 用于恢复自定义数据。
+   *
    * @returns 新的物理世界，推进方式与保存时一致。
    * @throws 快照格式或版本无效、数据损坏、维度不符或缺少 terrain.collision 时抛出错误。
    */
@@ -664,7 +694,7 @@ export class PhysicsWorld {
    * @param deltaTime
    * 推进的时间，单位为秒，必须大于 `0`，由各个子步平均分摊。默认值为 `1 / 20`，即一个 tick。
    * @returns
-   * 这次推进的子步数。负载太高时，该值小于 {@link PhysicsWorld.substeps}，规则见 {@link PhysicsWorldOptions.substeps}。
+   * 这次推进中各活动组合使用的最大子步数。预算规则见 {@link PhysicsWorldOptions.substeps}。
    * @throws
    * `deltaTime` 不合法时；推进完成后有事件回调抛出错误时，抛出第一个错误（见 {@link Signal}）。
    *
@@ -677,6 +707,7 @@ export class PhysicsWorld {
     const start = now();
     // 碰撞事件延迟至步进结束后派发。
     this.tickCount++;
+    this.brokenShapes.clear();
     // 先施加爆炸冲量，使被唤醒刚体按活动范围请求地形。
     if (this.occlusion !== null && this.explosionQueue.size > 0) this.applyExplosions(this.occlusion);
     if (this.collider !== null && this.freezeOnUnloaded) this.checkChunks(this.collider);
@@ -688,11 +719,12 @@ export class PhysicsWorld {
     if (this.floatingBodies.size > 0) this.applyFloating();
     if (this.fluids !== null) this.applyFluids(this.fluids, this.collider!, deltaTime);
     // 子步数按最近的耗时调整（见 adjustSubsteps）；每次都推进完整 deltaTime
-    const done = this.activeSubsteps;
     // 推进前记录插值起点。
     for (const b of this.bodySet) b.recordPrevious();
-    this.core.softSubsteps = done;
+    this.core.softSubsteps = this.activeSubsteps;
+    this.core.softSupportSubsteps = Math.min(this.substepCount, DEFAULT_SUBSTEPS);
     this.core.step(deltaTime);
+    const done = this.core.lastMaxSubsteps;
     // 存在参与推进的刚体时标记存档变化；全部休眠时状态保持不变。
     if (this.core.numIslands > 0) this.revisionValue++;
     this.totalSteps += done;
@@ -914,8 +946,10 @@ export class PhysicsWorld {
    * @param options 刚体选项。
    * @returns 新创建的刚体。
    * @throws 选项无效时抛出错误，创建过程不保留部分结果。
-   * 形状列表须非空，类型、尺寸、密度及 block 数据须有效；位置、速度和 gravityScale 须为有限数，阻尼须非负。
-   * 形状错误包含该形状在 shapes 中的下标。
+   *
+   * - 形状列表须非空，类型、尺寸、密度及 `block` 数据须有效。
+   * - 位置、速度和 `gravityScale` 须为有限数，阻尼须非负。
+   * - 形状错误包含该形状在 `shapes` 中的下标。
    *
    * @example drop-a-crate.ts
    * {@includeCode ../../examples/getting-started/drop-a-crate.ts}
@@ -966,7 +1000,6 @@ export class PhysicsWorld {
       }
     });
     const core = new RigidBody(config);
-    core.addShapes(shapes);
     // 方块形状：记下方块，挑出悬浮、易碎的方块。一个方块可能有几个盒子（楼梯），悬浮按方块算一次，
     // 位置取这个方块各个盒子按体积加权的中心
     let floatingBlocks: Map<string, { x: number; y: number; z: number; w: number; physics: BlockPhysics }> | null = null;
@@ -998,7 +1031,10 @@ export class PhysicsWorld {
       if (!Number.isFinite(options.gravityScale)) throw new Error(`gravityScale 必须是有限的数，收到 ${options.gravityScale}`);
       core.gravityScale = options.gravityScale;
     }
+    const runtimeShapes = mergeBlockShapes(shapes);
+    core.addShapes(runtimeShapes);
     const body = new Body(this, core, options.userData);
+    if (runtimeShapes !== shapes) body.snapshotShapes = shapes;
     body.recordPrevious();
     this.core.addRigidBody(core);
     this.bodySet.add(body);
@@ -1296,8 +1332,9 @@ export class PhysicsWorld {
    * 使指定范围的地形碰撞缓存失效。
    *
    * @remarks
-   * 范围自动外扩 1 格，覆盖邻接形状的变化；未缓存区域在后续读取时获取当前数据。
-   * 未启用地形时无效果。
+   *
+   * - 范围自动外扩 1 格，覆盖邻接形状的变化；未缓存区域在后续读取时获取当前数据。
+   * - 未启用地形时无效果。
    *
    * @param min
    * 范围的最小方块坐标。
@@ -1321,7 +1358,10 @@ export class PhysicsWorld {
    * 销毁物理世界。
    *
    * @remarks
-   * 停止自动推进，移除所有刚体和关节，并取消所有事件订阅。世界及其创建的所有对象随即失效。重复调用没有额外效果。
+   *
+   * - 停止自动推进，移除所有刚体和关节，并取消所有事件订阅。
+   * - 世界及其创建的所有对象随即失效。
+   * - 重复调用没有额外效果。
    */
   destroy(): void {
     if (!this.validFlag) return;
@@ -1345,6 +1385,7 @@ export class PhysicsWorld {
     this.floatingBodies.clear();
     this.fragileBodies.clear();
     this.pendingBreaks.clear();
+    this.brokenShapes.clear();
     this.collider?.dispose();
     for (const signal of Object.values(this.events)) signal.clear();
     this.pending = [];
@@ -1421,10 +1462,14 @@ export class PhysicsWorld {
     for (let side = 0; side < 2; side++) {
       const body = side === 0 ? b1 : b2;
       if (body === undefined || !this.fragileBodies.has(body)) continue;
-      const info = (side === 0 ? c.s1 : c.s2)!.userData as ShapeBlock | null;
+      const shape = (side === 0 ? c.s1 : c.s2)!;
+      const info = shape.userData as ShapeBlock | null;
       const threshold = info?.physics.fragileImpactSpeed;
       if (threshold === undefined || speed < threshold) continue;
       if (!signal.hasSubscribers) continue;
+      // 同一形状跨多个地形碰撞体时，每 tick 仅发出一次破碎事件。
+      if (this.brokenShapes.has(shape)) continue;
+      this.brokenShapes.add(shape);
       const l = info!.block.location;
       const event = { body, blockLocation: { x: l.x, y: l.y, z: l.z }, typeId: info!.block.typeId, shapeIndex: info!.index, impactSpeed: speed };
       this.pending.push(() => signal.emit(event));

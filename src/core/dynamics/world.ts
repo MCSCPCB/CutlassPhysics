@@ -48,8 +48,13 @@ export class World {
   softIterations = 3;
   /** 软接触：积分之后松弛解几遍 */
   softRelaxIterations = 3;
+  /** 冲量变化总量低于此值时结束本阶段迭代；0 表示固定遍数。 */
+  softTolerance = 0;
+  /** 低速且无关节的接触岛减少常规迭代，受力或速度增大时恢复。 */
+  softAdaptiveIterations = false;
   /**
-   * 软接触：撞击时多解几遍。单步时加在松弛阶段；多个子步时（softSubsteps 大于 0）两个阶段都解这么多遍，第一遍之后只解碰到被撞刚体的接触
+   * 撞击迭代次数。子步模式下，超出常规遍数的部分仅处理被撞刚体的接触。
+   * 单步模式将此值加到松弛遍数上。
    */
   softImpactIterations = 4;
   /** 软接触：靠近速度超过它（m/s）算撞击 */
@@ -75,6 +80,10 @@ export class World {
    * 正值使碰撞检测和接触准备每步仅执行一次，子步执行求解和积分；仅在 softContacts 开启时有效。
    */
   softSubsteps = 0;
+  /** 大质量比接触岛的子步数下限，0 表示不单独调整。 */
+  softSupportSubsteps = 0;
+  /** 最近一次步进中各岛使用的最大子步数。 */
+  lastMaxSubsteps = 0;
   /**
    * 预测接触的基础距离，单位为米，仅在 softSubsteps > 0 时生效。
    * 静态接触按形状运动范围扩展，动态接触按受限的相对运动速度扩展，上限为 maxSpeculativeDistance。
@@ -143,10 +152,7 @@ export class World {
     ts.invDt = 1 / dt;
     const substepped = this.softContacts && this.softSubsteps > 0;
     this.contactManager.speculative = substepped;
-    if (substepped) {
-      this.syncStaleBodies();
-      this.wakeTouched();
-    }
+    if (substepped) this.wakeContacts(dt);
     this.contactManager.updateContacts();
     this.contactManager.updateManifolds();
     this.clearRestless();
@@ -361,11 +367,17 @@ export class World {
   }
 
   /** 碰撞检测前按当前速度同步 speculativeStale 刚体的预测距离和包围盒。 */
-  private syncStaleBodies(): void {
-    const t = this.speculativeTick();
+  private syncStaleBodies(t: number): void {
     for (let b = this.rigidBodyList; b !== null; b = b.next) {
       if (b.speculativeStale && b.type !== RigidBodyType.STATIC) b.syncShapesSpeculative(t, this.speculativeDistance, this.maxSpeculativeDistance);
     }
+  }
+
+  /** 在地形请求之前唤醒可能受撞击的刚体，使其支撑碰撞体在本步恢复。 */
+  wakeContacts(dt: number): void {
+    if (!this.softContacts || this.softSubsteps <= 0) return;
+    this.syncStaleBodies(dt);
+    this.wakeTouched();
   }
 
   /**
@@ -404,6 +416,7 @@ export class World {
     island.setGravity(this.gravityX, this.gravityY, this.gravityZ);
     this.numIslands = 0;
     const n = this.softSubsteps;
+    this.lastMaxSubsteps = n;
     const h = this.timeStep.dt / n;
     const sub = this.subTimeStep;
     // 子步步长变了（子步数或 dt 变了）：第一个子步按比例缩放上一步留下的累积冲量
@@ -417,6 +430,8 @@ export class World {
     p.substeps = n;
     p.iterations = this.softIterations;
     p.relaxIterations = this.softRelaxIterations;
+    p.tolerance = this.softTolerance;
+    p.adaptiveIterations = this.softAdaptiveIterations;
     p.impactIterations = this.softImpactIterations;
     p.impactVelocity = this.softImpactVelocity;
     p.jointIterations = this.numVelocityIterations;
@@ -440,12 +455,28 @@ export class World {
     p.skin = this.softContactSkin;
     const clock = this.clock;
     const tick = this.timeStep;
+    let minMass = Infinity;
+    if (n < this.softSupportSubsteps) {
+      for (let b = this.rigidBodyList; b !== null; b = b.next) {
+        if (b.type === RigidBodyType.DYNAMIC && b.mass > 0 && b.mass < minMass) minMass = b.mass;
+      }
+    }
     let substepMs = 0;
     // 只给子步本身计时（run 那一段），每个 tick 只做一次的 begin、finish 不算进去
     for (let b = this.rigidBodyList; b !== null; b = b.next) {
       if (b.addedToIsland || b.sleeping || b.type === RigidBodyType.STATIC) continue;
       const alone = b.isAlone();
       if (!alone) this.buildIsland(b, true);
+      // 较重的自由落体保留积分精度，避免预算切换改变入射时刻。
+      const count = alone ? (b.mass >= minMass * 8 ? Math.max(n, this.softSupportSubsteps) : n) : island.supportSubsteps(n, this.softSupportSubsteps);
+      if (count !== p.substeps) {
+        p.substeps = count;
+        const dt = tick.dt / count, limit = this.softHertzStepRatio / dt;
+        sub.dt = dt; sub.invDt = 1 / dt;
+        this.softDynamic.set(Math.min(this.softContactHertz, limit), this.softDampingRatio, dt);
+        this.softFixed.set(Math.min(this.softContactHertz * this.softFixedHertzScale, limit * this.softFixedHertzScale), this.softDampingRatio, dt);
+      }
+      if (count > this.lastMaxSubsteps) this.lastMaxSubsteps = count;
       sub.dtRatio = firstRatio;
       if (alone) {
         if (island.beginSingleRigidBodySubsteps(tick, b)) {
@@ -468,7 +499,7 @@ export class World {
     this.lastSubstepMs = substepMs;
     // 每个 tick 使用相同的起始顺序，子步内交替正反序。
     sub.dtRatio = 1;
-    // 关节始终使用全局子步数；下一 tick 的关节热启动按这个步长求比值。
+    // 保存基础步长；接触与关节分别记录各自的热启动步长。
     sub.dt = h;
     sub.invDt = 1 / h;
     this.finishIslands();

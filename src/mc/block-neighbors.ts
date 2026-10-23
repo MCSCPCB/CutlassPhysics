@@ -56,8 +56,34 @@ function stairBoxes(states: BlockStates): readonly LocalBox[] | undefined {
 export function stateBoxes(typeId: string, states: BlockStates): readonly LocalBox[] | undefined {
   const n = typeId.replace(/^minecraft:/, "");
   if (n.endsWith("_stairs")) return stairBoxes(states);
+  if (n.endsWith("_fence_gate") || n === "fence_gate") {
+    if (readState(states, "open_bit") === 1) return [];
+    const d = readState(states, "direction");
+    const cardinal = readState(states, "minecraft:cardinal_direction");
+    const alongZ = typeof d === "number" ? (d & 1) === 1 : cardinal === "east" || cardinal === "west";
+    return alongZ ? [[0.375, 0, 0, 0.625, 1, 1]] : [[0, 0, 0.375, 1, 1, 0.625]];
+  }
+  if (n.endsWith("_wall")) {
+    const values = ["east", "west", "south", "north"].map(d => readState(states, `wall_connection_type_${d}`));
+    const c = values.map(v => v === "short" || v === "low" || v === "tall");
+    const post = readState(states, "wall_post_bit") === 1 || values.some(v => v === undefined);
+    const lo = 0.3125, hi = 0.6875;
+    const boxes: LocalBox[] = [];
+    if (post) {
+      boxes.push([0.25, 0, 0.25, 0.75, 1, 0.75]);
+      if (c[0]) boxes.push([0.75, 0, lo, 1, 1, hi]);
+      if (c[1]) boxes.push([0, 0, lo, 0.25, 1, hi]);
+      if (c[2]) boxes.push([lo, 0, 0.75, hi, 1, 1]);
+      if (c[3]) boxes.push([lo, 0, 0, hi, 1, 0.25]);
+    } else if (c.some(Boolean)) {
+      boxes.push([c[1] ? 0 : lo, 0, lo, c[0] ? 1 : hi, 1, hi]);
+      if (c[2]) boxes.push([lo, 0, hi, hi, 1, 1]);
+      if (c[3]) boxes.push([lo, 0, 0, hi, 1, lo]);
+    }
+    return boxes;
+  }
   if (!fence(n) && !pane(n)) return undefined;
-  const isFence = fence(n), lo = isFence ? 0.375 : 0.4375, hi = 1 - lo, height = isFence ? 1.5 : 1;
+  const isFence = fence(n), lo = isFence ? 0.375 : 0.4375, hi = 1 - lo, height = 1;
   const c = connectionKeys.map((k) => readState(states, k) === 1);
   const boxes: LocalBox[] = [];
   // 一字连接合成一个盒子；交叉时第二条只增加未覆盖的部分。

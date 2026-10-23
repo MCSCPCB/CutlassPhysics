@@ -39,7 +39,14 @@ export interface SnapshotOptions {
 
 /** 恢复时的运行配置。快照不包含自定义碰撞函数和事件订阅。 */
 export interface RestoreOptions extends PhysicsWorldOptions {
-  /** 把 {@link BodySnapshot.data} 还原成刚体的 userData。`index` 是刚体在快照里的下标。省略时直接用存档里的值 */
+  /**
+   * 将 {@link BodySnapshot.data} 还原成刚体的 `userData`。
+   *
+   * @remarks
+   *
+   * - `index` 是刚体在快照中的下标。
+   * - 省略时直接使用存档中的值。
+   */
   decodeUserData?: (data: JsonValue, index: number) => unknown;
 }
 
@@ -113,8 +120,12 @@ export interface JointSnapshot {
 }
 
 /**
- * 可用 JSON 保存的快照。format 是兼容性标识，schema 是存档格式版本。
- * 不包含地形缓存、接触热启动缓存、回调或原版实体；不是逐位恢复求解器的检查点。
+ * 可用 JSON 保存的快照。
+ *
+ * @remarks
+ *
+ * - `format` 是兼容性标识，`schema` 是存档格式版本。
+ * - 不包含地形缓存、接触热启动缓存、回调或原版实体，不能逐位恢复求解器状态。
  */
 export interface PhysicsSnapshot {
   /** 固定为 `"cutlass-physics"` */
@@ -227,7 +238,11 @@ export class SnapshotShapeCache {
 export function captureBody(body: Body, options: SnapshotOptions, cache?: SnapshotShapeCache): BodySnapshot {
   const c = body.core;
   const shapes: ShapeOptions[] = [];
-  for (let s = c.shapeList; s !== null; s = s.next) shapes.push(cache ? cache.capture(s) : shapeSnapshot(s));
+  if (body.snapshotShapes) {
+    for (const s of body.snapshotShapes) shapes.push(cache ? cache.capture(s) : shapeSnapshot(s));
+  } else {
+    for (let s = c.shapeList; s !== null; s = s.next) shapes.push(cache ? cache.capture(s) : shapeSnapshot(s));
+  }
   const out: BodySnapshot = {
     options: {
       type: body.type, shapes, location: body.location, rotation: body.rotation,

@@ -13,6 +13,8 @@ export type { BlockPhysics, BlockPhysicsStates, FloatingMaterial } from "./block
 export type { BlockDefinition, BlockDefinitions, BlockProperties, BlockStateValue, BlockVariant } from "./block-registry.js";
 export type { BodyOptions, BodyType } from "./body.js";
 export { Body } from "./body.js";
+export { Drag } from "./drag.js";
+export type { DragOptions } from "./drag.js";
 export type {
   AngularLimitOptions, BallJointOptions, CylinderJointOptions, GenericJointOptions, HingeJointOptions,
   JointBaseOptions, JointOptions, LinearLimitOptions, RagdollJointOptions, SliderJointOptions, SpringOptions,

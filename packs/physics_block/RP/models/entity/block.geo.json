@@ -6,8 +6,8 @@
         "identifier": "geometry.cutlass.block",
         "texture_width": 16,
         "texture_height": 16,
-        "visible_bounds_width": 4,
-        "visible_bounds_height": 4,
+        "visible_bounds_width": 128,
+        "visible_bounds_height": 128,
         "visible_bounds_offset": [
           0,
           0,

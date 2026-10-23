@@ -1847,9 +1847,9 @@ function createBlockShapeTable() {
 function normalize(v) {
   return typeof v === "boolean" ? v ? 1 : 0 : v;
 }
-function readState(states, key) {
-  let v = states[key];
-  if (v === void 0) v = key.startsWith("minecraft:") ? states[key.slice(10)] : states[`minecraft:${key}`];
+function readState(states, key2) {
+  let v = states[key2];
+  if (v === void 0) v = key2.startsWith("minecraft:") ? states[key2.slice(10)] : states[`minecraft:${key2}`];
   return normalize(v);
 }
 function isDoor(name) {
@@ -1876,7 +1876,7 @@ function isStateIndependent(typeId) {
 function isStateShaped(typeId) {
   if (typeId.includes(":") && !typeId.startsWith("minecraft:")) return false;
   const n = typeId.replace(/^minecraft:/, "");
-  return n === "fence" || n.endsWith("_fence") || n.endsWith("_stairs") || n === "glass_pane" || n.endsWith("_stained_glass_pane") || n.endsWith("_bars");
+  return n === "fence" || n.endsWith("_fence") || n === "fence_gate" || n.endsWith("_fence_gate") || n.endsWith("_wall") || n.endsWith("_stairs") || n === "glass_pane" || n.endsWith("_stained_glass_pane") || n.endsWith("_bars");
 }
 function needsBlockContext(typeId) {
   if (typeId.includes(":") && !typeId.startsWith("minecraft:")) return false;
@@ -1935,8 +1935,34 @@ function stairBoxes(states) {
 function stateBoxes(typeId, states) {
   const n = typeId.replace(/^minecraft:/, "");
   if (n.endsWith("_stairs")) return stairBoxes(states);
+  if (n.endsWith("_fence_gate") || n === "fence_gate") {
+    if (readState(states, "open_bit") === 1) return [];
+    const d = readState(states, "direction");
+    const cardinal = readState(states, "minecraft:cardinal_direction");
+    const alongZ = typeof d === "number" ? (d & 1) === 1 : cardinal === "east" || cardinal === "west";
+    return alongZ ? [[0.375, 0, 0, 0.625, 1, 1]] : [[0, 0, 0.375, 1, 1, 0.625]];
+  }
+  if (n.endsWith("_wall")) {
+    const values = ["east", "west", "south", "north"].map((d) => readState(states, `wall_connection_type_${d}`));
+    const c2 = values.map((v) => v === "short" || v === "low" || v === "tall");
+    const post = readState(states, "wall_post_bit") === 1 || values.some((v) => v === void 0);
+    const lo2 = 0.3125, hi2 = 0.6875;
+    const boxes2 = [];
+    if (post) {
+      boxes2.push([0.25, 0, 0.25, 0.75, 1, 0.75]);
+      if (c2[0]) boxes2.push([0.75, 0, lo2, 1, 1, hi2]);
+      if (c2[1]) boxes2.push([0, 0, lo2, 0.25, 1, hi2]);
+      if (c2[2]) boxes2.push([lo2, 0, 0.75, hi2, 1, 1]);
+      if (c2[3]) boxes2.push([lo2, 0, 0, hi2, 1, 0.25]);
+    } else if (c2.some(Boolean)) {
+      boxes2.push([c2[1] ? 0 : lo2, 0, lo2, c2[0] ? 1 : hi2, 1, hi2]);
+      if (c2[2]) boxes2.push([lo2, 0, hi2, hi2, 1, 1]);
+      if (c2[3]) boxes2.push([lo2, 0, 0, hi2, 1, lo2]);
+    }
+    return boxes2;
+  }
   if (!fence(n) && !pane(n)) return void 0;
-  const isFence = fence(n), lo = isFence ? 0.375 : 0.4375, hi = 1 - lo, height = isFence ? 1.5 : 1;
+  const isFence = fence(n), lo = isFence ? 0.375 : 0.4375, hi = 1 - lo, height = 1;
   const c = connectionKeys.map((k) => readState(states, k) === 1);
   const boxes = [];
   if (c[0] || c[1]) boxes.push([c[1] ? 0 : lo, 0, lo, c[0] ? 1 : hi, height, hi]);
@@ -2066,11 +2092,11 @@ var BlockEntry = class {
     return this.base;
   }
 };
-function readState2(states, key) {
-  const v = states[key];
+function readState2(states, key2) {
+  const v = states[key2];
   if (v !== void 0) return v;
-  if (key.startsWith("minecraft:")) return states[key.slice(10)];
-  return key.includes(":") ? void 0 : states[`minecraft:${key}`];
+  if (key2.startsWith("minecraft:")) return states[key2.slice(10)];
+  return key2.includes(":") ? void 0 : states[`minecraft:${key2}`];
 }
 function matches(value, wanted) {
   if (value === void 0) return false;
@@ -2121,11 +2147,11 @@ function checkProperties(typeId, path, p) {
     ["restitution", 0, true],
     ["fragileImpactSpeed", 0, false]
   ];
-  for (const [key, min, inclusive] of numbers) {
-    const v = p[key];
+  for (const [key2, min, inclusive] of numbers) {
+    const v = p[key2];
     if (v === void 0) continue;
-    if (!finiteNumber(v) || (inclusive ? v < min : v <= min)) fail(typeId, `${path}.${key}`, `\u5FC5\u987B\u662F${inclusive ? "\u4E0D\u5C0F\u4E8E" : "\u5927\u4E8E"} ${min} \u7684\u6709\u9650\u6570\uFF0C\u6536\u5230 ${String(v)}`);
-    copy[key] = v;
+    if (!finiteNumber(v) || (inclusive ? v < min : v <= min)) fail(typeId, `${path}.${key2}`, `\u5FC5\u987B\u662F${inclusive ? "\u4E0D\u5C0F\u4E8E" : "\u5927\u4E8E"} ${min} \u7684\u6709\u9650\u6570\uFF0C\u6536\u5230 ${String(v)}`);
+    copy[key2] = v;
   }
   return { copy, boxes };
 }
@@ -2134,15 +2160,15 @@ function checkCondition(typeId, path, when) {
   const keys = Object.keys(when);
   if (keys.length === 0) fail(typeId, path, "\u81F3\u5C11\u8981\u5199\u4E00\u9879\u72B6\u6001");
   const conditions = [], copy = {};
-  for (const key of keys) {
-    const raw = when[key];
+  for (const key2 of keys) {
+    const raw = when[key2];
     const list = Array.isArray(raw) ? raw : [raw];
-    if (list.length === 0) fail(typeId, `${path}.${key}`, "\u4E0D\u80FD\u662F\u7A7A\u6570\u7EC4");
+    if (list.length === 0) fail(typeId, `${path}.${key2}`, "\u4E0D\u80FD\u662F\u7A7A\u6570\u7EC4");
     for (const v of list) {
-      if (typeof v !== "boolean" && typeof v !== "string" && !finiteNumber(v)) fail(typeId, `${path}.${key}`, `\u7684\u503C\u5FC5\u987B\u662F\u5E03\u5C14\u3001\u6709\u9650\u6570\u6216\u5B57\u7B26\u4E32\uFF0C\u6536\u5230 ${String(v)}`);
+      if (typeof v !== "boolean" && typeof v !== "string" && !finiteNumber(v)) fail(typeId, `${path}.${key2}`, `\u7684\u503C\u5FC5\u987B\u662F\u5E03\u5C14\u3001\u6709\u9650\u6570\u6216\u5B57\u7B26\u4E32\uFF0C\u6536\u5230 ${String(v)}`);
     }
-    conditions.push({ key, values: list });
-    copy[key] = Array.isArray(raw) ? [...raw] : raw;
+    conditions.push({ key: key2, values: list });
+    copy[key2] = Array.isArray(raw) ? [...raw] : raw;
   }
   return { conditions, copy };
 }
@@ -2163,12 +2189,12 @@ var BlockRegistry = class {
       return id;
     };
     let minFragile = Infinity;
-    for (const key of Object.keys(definitions)) {
-      if (key.length === 0 || key.startsWith(":") || key.endsWith(":")) throw new Error(`\u65B9\u5757\u767B\u8BB0\u8868\u7684\u65B9\u5757\u7C7B\u578B\u4E0D\u5408\u6CD5\uFF1A${JSON.stringify(key)}`);
-      const typeId = qualified(key);
+    for (const key2 of Object.keys(definitions)) {
+      if (key2.length === 0 || key2.startsWith(":") || key2.endsWith(":")) throw new Error(`\u65B9\u5757\u767B\u8BB0\u8868\u7684\u65B9\u5757\u7C7B\u578B\u4E0D\u5408\u6CD5\uFF1A${JSON.stringify(key2)}`);
+      const typeId = qualified(key2);
       if (typeId === "minecraft:air") throw new Error("\u65B9\u5757\u767B\u8BB0\u8868\u4E0D\u80FD\u767B\u8BB0\u7A7A\u6C14");
       if (this.entries.has(typeId)) throw new Error(`\u65B9\u5757\u767B\u8BB0\u8868\u91CC ${typeId} \u767B\u8BB0\u4E86\u4E24\u6B21`);
-      const definition = definitions[key];
+      const definition = definitions[key2];
       const base = checkProperties(typeId, "\u9ED8\u8BA4\u9879", definition);
       const merge = (over, under) => {
         const friction = over.copy.friction ?? under?.friction, restitution = over.copy.restitution ?? under?.restitution;
@@ -3757,10 +3783,10 @@ var GjkEpa = class _GjkEpa {
     const supportingVertex = s[0], witness1 = w1[0], witness2 = w2[0];
     const maxIterations = 40;
     for (let count = 0; count < maxIterations; count++) {
-      const face = poly.getBestTriangle();
-      dir.copyFrom(face.normal).normalize();
+      const face2 = poly.getBestTriangle();
+      dir.copyFrom(face2.normal).normalize();
       this.computeSupportingVertex();
-      const v0 = face.vertices[0], v1 = face.vertices[1], v2 = face.vertices[2];
+      const v0 = face2.vertices[0], v1 = face2.vertices[1], v2 = face2.vertices[2];
       const dot1 = v0.v.dot(dir);
       const dot2 = supportingVertex.dot(dir);
       if (dot2 - dot1 < 1e-6 || count === maxIterations - 1) {
@@ -3770,7 +3796,7 @@ var GjkEpa = class _GjkEpa {
         return GjkEpaResultState.SUCCEEDED;
       }
       const epaVertex = poly.pickVertex().init(supportingVertex, witness1, witness2);
-      if (!poly.addVertex(epaVertex, face)) return GjkEpaResultState.EPA_FAILED_TO_ADD_VERTEX;
+      if (!poly.addVertex(epaVertex, face2)) return GjkEpaResultState.EPA_FAILED_TO_ADD_VERTEX;
     }
     return GjkEpaResultState.EPA_DID_NOT_CONVERGE;
   }
@@ -4866,6 +4892,8 @@ var ConstraintSolver = class {
     this.b1 = null;
     this.b2 = null;
     this.addedToIsland = false;
+    /** 最近一次软接触子步的步长，用于关节热启动。 */
+    this.softSubstepDt = 0;
   }
 };
 
@@ -8487,6 +8515,259 @@ function makeJoint(o, a, b) {
   throw new Error("\u672A\u77E5\u7684\u5173\u8282\u914D\u7F6E");
 }
 
+// src/core/dynamics/constraint/drag-constraint.ts
+var DragConstraint = class {
+  constructor(body) {
+    this.body = body;
+    this.lax = 0;
+    this.lay = 0;
+    this.laz = 0;
+    this.x = 0;
+    this.y = 0;
+    this.z = 0;
+    this.px = 0;
+    this.py = 0;
+    this.pz = 0;
+    this.qx = 0;
+    this.qy = 0;
+    this.qz = 0;
+    this.qw = 1;
+    this.hertz = 4;
+    this.dampingRatio = 1;
+    this.maxAcceleration = 60;
+    this.holdRotation = true;
+    this.angularHertz = 3;
+    this.angularDampingRatio = 1;
+    this.maxAngularAcceleration = 40;
+    this.ix = 0;
+    this.iy = 0;
+    this.iz = 0;
+    this.ax = 0;
+    this.ay = 0;
+    this.az = 0;
+  }
+  finish() {
+    this.px = this.x;
+    this.py = this.y;
+    this.pz = this.z;
+  }
+  warmStart() {
+    const b = this.body, r = b.transform, m = b.invMass;
+    if (m === 0) return;
+    const x = r.r00 * this.lax + r.r01 * this.lay + r.r02 * this.laz;
+    const y = r.r10 * this.lax + r.r11 * this.lay + r.r12 * this.laz;
+    const z = r.r20 * this.lax + r.r21 * this.lay + r.r22 * this.laz;
+    b.vx += m * this.ix;
+    b.vy += m * this.iy;
+    b.vz += m * this.iz;
+    const tx = y * this.iz - z * this.iy + this.ax;
+    const ty = z * this.ix - x * this.iz + this.ay;
+    const tz = x * this.iy - y * this.ix + this.az;
+    b.wx += b.ii00 * tx + b.ii01 * ty + b.ii02 * tz;
+    b.wy += b.ii10 * tx + b.ii11 * ty + b.ii12 * tz;
+    b.wz += b.ii20 * tx + b.ii21 * ty + b.ii22 * tz;
+  }
+  solve(h, fraction) {
+    const b = this.body, r = b.transform, m = b.invMass;
+    if (m === 0) return;
+    const a = b.ii00, c = b.ii01, d = b.ii02, e = b.ii11, f = b.ii12, g = b.ii22;
+    const x = r.r00 * this.lax + r.r01 * this.lay + r.r02 * this.laz;
+    const y = r.r10 * this.lax + r.r11 * this.lay + r.r12 * this.laz;
+    const z = r.r20 * this.lax + r.r21 * this.lay + r.r22 * this.laz;
+    const ex = r.px + x - (this.px + (this.x - this.px) * fraction);
+    const ey = r.py + y - (this.py + (this.y - this.py) * fraction);
+    const ez = r.pz + z - (this.pz + (this.z - this.pz) * fraction);
+    let omega = 2 * Math.PI * this.hertz, damp = 2 * this.dampingRatio + h * omega;
+    let scale = h * omega * damp, soft = 1 / (1 + scale), bias = omega / damp;
+    scale *= soft;
+    const k00 = m + (-(-z * e + y * f) * z + (-z * f + y * g) * y);
+    const k01 = (-z * c + y * d) * z - (-z * f + y * g) * x;
+    const k02 = -(-z * c + y * d) * y + (-z * e + y * f) * x;
+    const k11 = m + ((z * a - x * d) * z - (z * d - x * g) * x);
+    const k12 = -(z * a - x * d) * y + (z * c - x * f) * x;
+    const k22 = m + (-(-y * a + x * c) * y + (-y * c + x * e) * x);
+    const co00 = k11 * k22 - k12 * k12, co01 = k02 * k12 - k01 * k22, co02 = k01 * k12 - k02 * k11;
+    let det2 = k00 * co00 + k01 * co01 + k02 * co02;
+    if (Math.abs(det2) > 1e-12) {
+      det2 = 1 / det2;
+      const vx = b.vx + b.wy * z - b.wz * y + bias * ex;
+      const vy = b.vy + b.wz * x - b.wx * z + bias * ey;
+      const vz = b.vz + b.wx * y - b.wy * x + bias * ez;
+      const oldX2 = this.ix, oldY2 = this.iy, oldZ2 = this.iz;
+      let jx2 = oldX2 - scale * (co00 * vx + co01 * vy + co02 * vz) * det2 - soft * oldX2;
+      let jy2 = oldY2 - scale * (co01 * vx + (k00 * k22 - k02 * k02) * vy + (k01 * k02 - k00 * k12) * vz) * det2 - soft * oldY2;
+      let jz2 = oldZ2 - scale * (co02 * vx + (k01 * k02 - k00 * k12) * vy + (k00 * k11 - k01 * k01) * vz) * det2 - soft * oldZ2;
+      const max2 = h * this.maxAcceleration / m, length22 = jx2 * jx2 + jy2 * jy2 + jz2 * jz2;
+      if (length22 > max2 * max2) {
+        const s = max2 / Math.sqrt(length22);
+        jx2 *= s;
+        jy2 *= s;
+        jz2 *= s;
+      }
+      this.ix = jx2;
+      this.iy = jy2;
+      this.iz = jz2;
+      jx2 -= oldX2;
+      jy2 -= oldY2;
+      jz2 -= oldZ2;
+      b.vx += m * jx2;
+      b.vy += m * jy2;
+      b.vz += m * jz2;
+      const tx = y * jz2 - z * jy2, ty = z * jx2 - x * jz2, tz = x * jy2 - y * jx2;
+      b.wx += a * tx + c * ty + d * tz;
+      b.wy += c * tx + e * ty + f * tz;
+      b.wz += d * tx + f * ty + g * tz;
+    }
+    if (!this.holdRotation) return;
+    let qx, qy, qz, qw;
+    const trace = r.r00 + r.r11 + r.r22;
+    if (trace > 0) {
+      const s = Math.sqrt(trace + 1), inv2 = 0.5 / s;
+      qw = 0.5 * s;
+      qx = (r.r21 - r.r12) * inv2;
+      qy = (r.r02 - r.r20) * inv2;
+      qz = (r.r10 - r.r01) * inv2;
+    } else if (r.r00 > r.r11 && r.r00 > r.r22) {
+      const s = Math.sqrt(r.r00 - r.r11 - r.r22 + 1), inv2 = 0.5 / s;
+      qx = 0.5 * s;
+      qy = (r.r01 + r.r10) * inv2;
+      qz = (r.r02 + r.r20) * inv2;
+      qw = (r.r21 - r.r12) * inv2;
+    } else if (r.r11 > r.r22) {
+      const s = Math.sqrt(r.r11 - r.r22 - r.r00 + 1), inv2 = 0.5 / s;
+      qy = 0.5 * s;
+      qx = (r.r01 + r.r10) * inv2;
+      qz = (r.r12 + r.r21) * inv2;
+      qw = (r.r02 - r.r20) * inv2;
+    } else {
+      const s = Math.sqrt(r.r22 - r.r00 - r.r11 + 1), inv2 = 0.5 / s;
+      qz = 0.5 * s;
+      qx = (r.r02 + r.r20) * inv2;
+      qy = (r.r12 + r.r21) * inv2;
+      qw = (r.r10 - r.r01) * inv2;
+    }
+    let rx = -this.qw * qx + this.qx * qw - this.qy * qz + this.qz * qy;
+    let ry = -this.qw * qy + this.qx * qz + this.qy * qw - this.qz * qx;
+    let rz = -this.qw * qz - this.qx * qy + this.qy * qx + this.qz * qw;
+    let rw = this.qw * qw + this.qx * qx + this.qy * qy + this.qz * qz;
+    if (rw < 0) {
+      rx = -rx;
+      ry = -ry;
+      rz = -rz;
+      rw = -rw;
+    }
+    const length = Math.sqrt(rx * rx + ry * ry + rz * rz);
+    const angle = length > 1e-9 ? 2 * Math.atan2(length, rw) / length : 0;
+    omega = 2 * Math.PI * this.angularHertz;
+    damp = 2 * this.angularDampingRatio + h * omega;
+    scale = h * omega * damp;
+    soft = 1 / (1 + scale);
+    bias = omega / damp;
+    scale *= soft;
+    const c00 = e * g - f * f, c01 = d * f - c * g, c02 = c * f - d * e;
+    det2 = a * c00 + c * c01 + d * c02;
+    if (Math.abs(det2) < 1e-18) return;
+    det2 = 1 / det2;
+    const i00 = c00 * det2, i01 = c01 * det2, i02 = c02 * det2;
+    const i11 = (a * g - d * d) * det2, i12 = (c * d - a * f) * det2, i22 = (a * e - c * c) * det2;
+    const wx = b.wx - bias * rx * angle, wy = b.wy - bias * ry * angle, wz = b.wz - bias * rz * angle;
+    const oldX = this.ax, oldY = this.ay, oldZ = this.az;
+    let jx = oldX - scale * (i00 * wx + i01 * wy + i02 * wz) - soft * oldX;
+    let jy = oldY - scale * (i01 * wx + i11 * wy + i12 * wz) - soft * oldY;
+    let jz = oldZ - scale * (i02 * wx + i12 * wy + i22 * wz) - soft * oldZ;
+    const max = h * this.maxAngularAcceleration * Math.max(i00, i11, i22), length2 = jx * jx + jy * jy + jz * jz;
+    if (length2 > max * max) {
+      const s = max / Math.sqrt(length2);
+      jx *= s;
+      jy *= s;
+      jz *= s;
+    }
+    this.ax = jx;
+    this.ay = jy;
+    this.az = jz;
+    jx -= oldX;
+    jy -= oldY;
+    jz -= oldZ;
+    b.wx += a * jx + c * jy + d * jz;
+    b.wy += c * jx + e * jy + f * jz;
+    b.wz += d * jx + f * jy + g * jz;
+  }
+};
+
+// src/mc/drag.ts
+function finite2(point2) {
+  if (!Number.isFinite(point2.x) || !Number.isFinite(point2.y) || !Number.isFinite(point2.z)) throw new Error("\u6293\u53D6\u5750\u6807\u5FC5\u987B\u662F\u6709\u9650\u6570");
+}
+var Drag = class {
+  /** @internal */
+  constructor(body, options) {
+    this.body = body;
+    if (body.type !== "dynamic") throw new Error("\u53EA\u80FD\u6293\u53D6\u52A8\u6001\u521A\u4F53");
+    finite2(options.anchor);
+    const d = new DragConstraint(body.core), local = body.worldToLocal(options.anchor);
+    this.constraint = d;
+    d.lax = local.x;
+    d.lay = local.y;
+    d.laz = local.z;
+    d.x = d.px = options.anchor.x;
+    d.y = d.py = options.anchor.y;
+    d.z = d.pz = options.anchor.z;
+    const q = body.rotation;
+    d.qx = q.x;
+    d.qy = q.y;
+    d.qz = q.z;
+    d.qw = q.w;
+    for (const [key2, value] of [
+      ["hertz", options.frequency],
+      ["dampingRatio", options.dampingRatio],
+      ["maxAcceleration", options.maxAcceleration],
+      ["angularHertz", options.angularFrequency],
+      ["angularDampingRatio", options.angularDampingRatio],
+      ["maxAngularAcceleration", options.maxAngularAcceleration]
+    ]) {
+      if (value === void 0) continue;
+      if (!Number.isFinite(value) || value <= 0) throw new Error(`${key2} \u5FC5\u987B\u662F\u5927\u4E8E\u96F6\u7684\u6709\u9650\u6570`);
+      d[key2] = value;
+    }
+    if (options.holdRotation !== void 0) d.holdRotation = options.holdRotation;
+    body.core.drag = d;
+    body.wakeUp();
+  }
+  /** 刚体移除、类型改变、约束替换或释放后为 false。 */
+  get isValid() {
+    return this.body.isValid && this.body.core.drag === this.constraint;
+  }
+  /** 更新下一次步进的目标位置和姿态。 */
+  setTarget(location, rotation) {
+    if (!this.isValid) throw new Error("\u6293\u53D6\u7EA6\u675F\u5DF2\u7ECF\u5931\u6548");
+    finite2(location);
+    const d = this.constraint;
+    if (rotation !== void 0) {
+      finite2(rotation);
+      const length = Math.hypot(rotation.x, rotation.y, rotation.z, rotation.w);
+      if (!(length > 0) || !Number.isFinite(length)) throw new Error("\u6293\u53D6\u59FF\u6001\u5FC5\u987B\u662F\u975E\u96F6\u6709\u9650\u56DB\u5143\u6570");
+      d.qx = rotation.x / length;
+      d.qy = rotation.y / length;
+      d.qz = rotation.z / length;
+      d.qw = rotation.w / length;
+    }
+    d.px = d.x;
+    d.py = d.y;
+    d.pz = d.z;
+    d.x = location.x;
+    d.y = location.y;
+    d.z = location.z;
+    this.body.wakeUp();
+  }
+  /** 释放约束，保留刚体当前速度。重复调用无作用。 */
+  remove() {
+    if (this.isValid) {
+      this.body.core.drag = null;
+      this.body.wakeUp();
+    }
+  }
+};
+
 // src/mc/body.ts
 function finite3(name, v) {
   if (!Number.isFinite(v.x) || !Number.isFinite(v.y) || !Number.isFinite(v.z)) {
@@ -8503,6 +8784,9 @@ var Body = class {
    * @internal
    */
   constructor(owner, core, userData) {
+    /** 合并碰撞盒前的逻辑形状，用于存档。
+     * @internal */
+    this.snapshotShapes = null;
     this.valid = true;
     /** 上一次被世界推进之前的位置和朝向（用于插值），由世界在每一步开始时记录 */
     this.prevPos = { x: 0, y: 0, z: 0 };
@@ -8515,6 +8799,7 @@ var Body = class {
   /** 内部使用：世界销毁或刚体移除时调用
    * @internal */
   invalidate() {
+    this.core.drag = null;
     this.valid = false;
   }
   check() {
@@ -8559,6 +8844,7 @@ var Body = class {
     const t = value === "static" ? RigidBodyType.STATIC : value === "kinematic" ? RigidBodyType.KINEMATIC : value === "dynamic" ? RigidBodyType.DYNAMIC : -1;
     if (t < 0) throw new Error(`\u672A\u77E5\u7684\u521A\u4F53\u7C7B\u578B\uFF1A${String(value)}`);
     if (t === this.core.type) return;
+    this.core.drag = null;
     this.core.setType(t);
   }
   /**
@@ -8701,8 +8987,10 @@ var Body = class {
    * 刚体浸在水或岩浆里的体积，单位为格³。
    *
    * @remarks
-   * 每个 tick 推进前更新；包括空心船体里托住的空气。没有地形、关闭了 `fluids`、或刚体不是动态刚体时为 `0`。
-   * 刚体休眠时保留休眠前的值。
+   *
+   * - 每个 tick 推进前更新，体积包括空心船体里托住的空气。
+   * - 没有地形、关闭 `fluids` 或刚体不是动态刚体时为 `0`。
+   * - 刚体休眠时保留休眠前的值。
    */
   get submerged() {
     this.check();
@@ -8921,6 +9209,16 @@ var Body = class {
     if (!this.valid) return;
     this.owner.removeBody(this);
   }
+  /**
+   * 创建抓取约束，替换此刚体已有的抓取约束。
+   *
+   * @example drag.ts
+   * {@includeCode ../../examples/body/drag.ts}
+   */
+  createDrag(options) {
+    this.check();
+    return new Drag(this, options);
+  }
 };
 
 // src/mc/joints.ts
@@ -9126,6 +9424,7 @@ var RigidBody = class {
     this.speculativeStale = false;
     /** 本 tick 是否跳过休眠计时，默认为 false。流体不平衡时由适配层设置。 */
     this.restless = false;
+    this.drag = null;
     this.transform = new Transform();
     this.sleepTime = 0;
     this.sleeping = false;
@@ -9191,6 +9490,13 @@ var RigidBody = class {
     this.aciX = 0;
     this.aciY = 0;
     this.aciZ = 0;
+    /** 子步接触产生的速度增量，供同一 tick 内的热启动复用。 */
+    this.contactDeltaVX = 0;
+    this.contactDeltaVY = 0;
+    this.contactDeltaVZ = 0;
+    this.contactDeltaWX = 0;
+    this.contactDeltaWY = 0;
+    this.contactDeltaWZ = 0;
     this.addedToIsland = false;
     this.gravityScale = 1;
     this.userData = null;
@@ -10335,6 +10641,9 @@ var SoftPoint = class {
     this.iaB2X = 0;
     this.iaB2Y = 0;
     this.iaB2Z = 0;
+    /** 单位法向冲量引起的切向相对速度变化。 */
+    this.couplingT = 0;
+    this.couplingB = 0;
     this.massN = 0;
     this.massT = 0;
     this.massB = 0;
@@ -10371,7 +10680,7 @@ var SoftContactSolver = class {
     this.live2 = true;
     /** 子步模式是否按当前位姿重新计算分离距离。 */
     this.substepped = false;
-    /** 这个 tick 碰到了被撞的刚体（见 Island.beginSubsteps）：撞击时第一遍之后只解这些接触 */
+    /** 本 tick 接触到被撞刚体，参与额外迭代。 */
     this.impacted = false;
     this.constraint = constraint;
     for (let i = 0; i < MAX_MANIFOLD_POINTS; i++) this.points.push(new SoftPoint());
@@ -10385,8 +10694,10 @@ var SoftContactSolver = class {
     this.substepped = substepped;
     const c = this.constraint, m = c.manifold, b1 = c.b1, b2 = c.b2;
     if (substepDt > 0 && c.substepDt > 0) impulseRatio = substepDt / c.substepDt;
+    if (substepped && this.impacted) impulseRatio = 0;
     c.substepDt = substepDt;
     this.friction = Math.sqrt(c.s1.friction * c.s2.friction);
+    if (b1.drag !== null || b2.drag !== null) this.friction *= 0.3;
     this.restitution = c.maxRestitution ? Math.max(c.s1.restitution, c.s2.restitution) : Math.sqrt(c.s1.restitution * c.s2.restitution);
     const surface = b1.invMass === 0 || b2.invMass === 0 ? skin : 0;
     const live1 = !b1.sleeping, live2 = !b2.sleeping;
@@ -10443,9 +10754,8 @@ var SoftContactSolver = class {
       const p = m.points[i], sp = this.points[i];
       p.disabled = false;
       if (!p.warmStarted) p.impulse.clear();
-      const mX = (p.p1X + p.p2X) * 0.5, mY = (p.p1Y + p.p2Y) * 0.5, mZ = (p.p1Z + p.p2Z) * 0.5;
-      const r1X = mX - p1X, r1Y = mY - p1Y, r1Z = mZ - p1Z;
-      const r2X = mX - p2X, r2Y = mY - p2Y, r2Z = mZ - p2Z;
+      const r1X = p.p1X - p1X, r1Y = p.p1Y - p1Y, r1Z = p.p1Z - p1Z;
+      const r2X = p.p2X - p2X, r2Y = p.p2Y - p2Y, r2Z = p.p2Z - p2Z;
       sp.r1X = r1X;
       sp.r1Y = r1Y;
       sp.r1Z = r1Z;
@@ -10476,6 +10786,7 @@ var SoftContactSolver = class {
       sp.iaT2Z = i220 * a2X + i221 * a2Y + i222 * a2Z;
       k = invM1 + invM2 + (a1X * sp.iaT1X + a1Y * sp.iaT1Y + a1Z * sp.iaT1Z) + (a2X * sp.iaT2X + a2Y * sp.iaT2Y + a2Z * sp.iaT2Z);
       sp.massT = k > 0 ? 1 / k : 0;
+      sp.couplingT = (invM1 + invM2) * (tX * nX + tY * nY + tZ * nZ) + a1X * sp.iaN1X + a1Y * sp.iaN1Y + a1Z * sp.iaN1Z + a2X * sp.iaN2X + a2Y * sp.iaN2Y + a2Z * sp.iaN2Z;
       a1X = r1Y * bZ - r1Z * bY;
       a1Y = r1Z * bX - r1X * bZ;
       a1Z = r1X * bY - r1Y * bX;
@@ -10490,6 +10801,7 @@ var SoftContactSolver = class {
       sp.iaB2Z = i220 * a2X + i221 * a2Y + i222 * a2Z;
       k = invM1 + invM2 + (a1X * sp.iaB1X + a1Y * sp.iaB1Y + a1Z * sp.iaB1Z) + (a2X * sp.iaB2X + a2Y * sp.iaB2Y + a2Z * sp.iaB2Z);
       sp.massB = k > 0 ? 1 / k : 0;
+      sp.couplingB = (invM1 + invM2) * (bX * nX + bY * nY + bZ * nZ) + a1X * sp.iaN1X + a1Y * sp.iaN1Y + a1Z * sp.iaN1Z + a2X * sp.iaN2X + a2Y * sp.iaN2Y + a2Z * sp.iaN2Z;
       sp.separation = -p.depth - surface;
       sp.offset = sp.separation - ((p.p1X - p.p2X) * nX + (p.p1Y - p.p2Y) * nY + (p.p1Z - p.p2Z) * nZ);
       const dvX = v1X + (w1Y * r1Z - w1Z * r1Y) - v2X - (w2Y * r2Z - w2Z * r2Y);
@@ -10567,7 +10879,7 @@ var SoftContactSolver = class {
     }
   }
   /**
-   * 执行一次摩擦和法向求解。
+   * 先求法向支撑，再求摩擦；返回冲量变化的绝对值之和。
    * useBias 启用穿透修正；关闭时仅阻止继续靠近。
    * reuseSeparation 仅在位姿未变时有效，reverse 控制接触点迭代方向。
    */
@@ -10618,47 +10930,16 @@ var SoftContactSolver = class {
       w2Z = b2.wz;
     }
     const friction = this.friction;
+    let error = 0;
     for (let k = 0; k < n; k++) {
       const sp = this.points[reverse ? n - 1 - k : k];
       const r1X = sp.r1X, r1Y = sp.r1Y, r1Z = sp.r1Z, r2X = sp.r2X, r2Y = sp.r2Y, r2Z = sp.r2Z;
-      if (sp.impulseN !== 0 || sp.impulseT !== 0 || sp.impulseB !== 0) {
-        const dvX2 = v1X + (w1Y * r1Z - w1Z * r1Y) - v2X - (w2Y * r2Z - w2Z * r2Y);
-        const dvY2 = v1Y + (w1Z * r1X - w1X * r1Z) - v2Y - (w2Z * r2X - w2X * r2Z);
-        const dvZ2 = v1Z + (w1X * r1Y - w1Y * r1X) - v2Z - (w2X * r2Y - w2Y * r2X);
-        let newT = sp.impulseT - sp.massT * (dvX2 * tX + dvY2 * tY + dvZ2 * tZ);
-        let newB = sp.impulseB - sp.massB * (dvX2 * bX + dvY2 * bY + dvZ2 * bZ);
-        const limit = friction * sp.impulseN;
-        const lenSq = newT * newT + newB * newB;
-        if (lenSq > limit * limit) {
-          const scale = lenSq > 0 ? limit / Math.sqrt(lenSq) : 0;
-          newT *= scale;
-          newB *= scale;
-        }
-        const iT = newT - sp.impulseT, iB = newB - sp.impulseB;
-        sp.impulseT = newT;
-        sp.impulseB = newB;
-        if (iT !== 0 || iB !== 0) {
-          const pX = tX * iT + bX * iB, pY = tY * iT + bY * iB, pZ = tZ * iT + bZ * iB;
-          v1X += invM1 * pX;
-          v1Y += invM1 * pY;
-          v1Z += invM1 * pZ;
-          v2X -= invM2 * pX;
-          v2Y -= invM2 * pY;
-          v2Z -= invM2 * pZ;
-          w1X += sp.iaT1X * iT + sp.iaB1X * iB;
-          w1Y += sp.iaT1Y * iT + sp.iaB1Y * iB;
-          w1Z += sp.iaT1Z * iT + sp.iaB1Z * iB;
-          w2X -= sp.iaT2X * iT + sp.iaB2X * iB;
-          w2Y -= sp.iaT2Y * iT + sp.iaB2Y * iB;
-          w2Z -= sp.iaT2Z * iT + sp.iaB2Z * iB;
-        }
-      }
       const s = sp.currentSeparation;
       let bias = 0, massScale = 1, impulseScale = 0;
       if (s > 0) {
         bias = s * invH;
-      } else if (useBias && s < -LINEAR_SLOP) {
-        bias = biasRate * (s + LINEAR_SLOP);
+      } else if (useBias && s < -(this.substepped ? 0 : LINEAR_SLOP)) {
+        bias = biasRate * (s + (this.substepped ? 0 : LINEAR_SLOP));
         if (bias < -maxPushVelocity) bias = -maxPushVelocity;
         massScale = softMass;
         impulseScale = softImpulse;
@@ -10673,21 +10954,40 @@ var SoftContactSolver = class {
       const total = sum > 0 ? sum : 0;
       impulse = total - old;
       sp.impulseN = total;
+      if (this.substepped && impulse > 0 && -vn > c.approachSpeed) c.approachSpeed = -vn;
       if (total > sp.maxImpulseN) sp.maxImpulseN = total;
-      if (impulse !== 0) {
-        v1X += invM1 * nX * impulse;
-        v1Y += invM1 * nY * impulse;
-        v1Z += invM1 * nZ * impulse;
-        v2X -= invM2 * nX * impulse;
-        v2Y -= invM2 * nY * impulse;
-        v2Z -= invM2 * nZ * impulse;
-        w1X += sp.iaN1X * impulse;
-        w1Y += sp.iaN1Y * impulse;
-        w1Z += sp.iaN1Z * impulse;
-        w2X -= sp.iaN2X * impulse;
-        w2Y -= sp.iaN2Y * impulse;
-        w2Z -= sp.iaN2Z * impulse;
+      let iT = 0, iB = 0;
+      if (total !== 0 || sp.impulseT !== 0 || sp.impulseB !== 0) {
+        let newT = sp.impulseT - sp.massT * (dvX * tX + dvY * tY + dvZ * tZ + sp.couplingT * impulse);
+        let newB = sp.impulseB - sp.massB * (dvX * bX + dvY * bY + dvZ * bZ + sp.couplingB * impulse);
+        const limit = friction * total, lenSq = newT * newT + newB * newB;
+        if (lenSq > limit * limit) {
+          const scale = limit / Math.sqrt(lenSq);
+          newT *= scale;
+          newB *= scale;
+        }
+        iT = newT - sp.impulseT;
+        iB = newB - sp.impulseB;
+        sp.impulseT = newT;
+        sp.impulseB = newB;
       }
+      error += Math.abs(impulse) + Math.abs(iT) + Math.abs(iB);
+      if (impulse === 0 && iT === 0 && iB === 0) continue;
+      const pX = nX * impulse + tX * iT + bX * iB;
+      const pY = nY * impulse + tY * iT + bY * iB;
+      const pZ = nZ * impulse + tZ * iT + bZ * iB;
+      v1X += invM1 * pX;
+      v1Y += invM1 * pY;
+      v1Z += invM1 * pZ;
+      v2X -= invM2 * pX;
+      v2Y -= invM2 * pY;
+      v2Z -= invM2 * pZ;
+      w1X += sp.iaN1X * impulse + sp.iaT1X * iT + sp.iaB1X * iB;
+      w1Y += sp.iaN1Y * impulse + sp.iaT1Y * iT + sp.iaB1Y * iB;
+      w1Z += sp.iaN1Z * impulse + sp.iaT1Z * iT + sp.iaB1Z * iB;
+      w2X -= sp.iaN2X * impulse + sp.iaT2X * iT + sp.iaB2X * iB;
+      w2Y -= sp.iaN2Y * impulse + sp.iaT2Y * iT + sp.iaB2Y * iB;
+      w2Z -= sp.iaN2Z * impulse + sp.iaT2Z * iT + sp.iaB2Z * iB;
     }
     if (live1) {
       b1.vx = v1X;
@@ -10705,6 +11005,7 @@ var SoftContactSolver = class {
       b2.wy = w2Y;
       b2.wz = w2Z;
     }
+    return error;
   }
   /** 有没有要反弹的点（applyRestitution 会处理的点） */
   wantsRestitution() {
@@ -12365,6 +12666,374 @@ var DetectorResult = class {
   }
 };
 
+// src/core/collision/narrowphase/compact-box-manifold.ts
+var manifoldPoints = new Array(24).fill(0);
+var manifoldSeparations = new Array(8).fill(0);
+var manifoldNormal = new Array(3).fill(0);
+var clipped = new Array(48).fill(0);
+var scratch = new Array(48).fill(0);
+var transpose = new Array(9).fill(0);
+var candidates = new Array(48).fill(0);
+var gaps = new Array(16).fill(0);
+var selected = new Array(4).fill(0);
+var faceSign = 1;
+function clip(input, count, output, axis, sign, limit) {
+  if (count === 0) return 0;
+  let result = 0;
+  let px = input[(count - 1) * 3], py = input[(count - 1) * 3 + 1], pz = input[(count - 1) * 3 + 2];
+  let previous = sign * input[(count - 1) * 3 + axis] - limit;
+  for (let i = 0; i < count; i++) {
+    const x = input[i * 3], y = input[i * 3 + 1], z = input[i * 3 + 2], distance = sign * input[i * 3 + axis] - limit;
+    if (distance <= 0) {
+      if (previous > 0) {
+        const t = previous / (previous - distance);
+        output[result * 3] = px + (x - px) * t;
+        output[result * 3 + 1] = py + (y - py) * t;
+        output[result * 3 + 2] = pz + (z - pz) * t;
+        result++;
+      }
+      output[result * 3] = x;
+      output[result * 3 + 1] = y;
+      output[result * 3 + 2] = z;
+      result++;
+    } else if (previous <= 0) {
+      const t = previous / (previous - distance);
+      output[result * 3] = px + (x - px) * t;
+      output[result * 3 + 1] = py + (y - py) * t;
+      output[result * 3 + 2] = pz + (z - pz) * t;
+      result++;
+    }
+    px = x;
+    py = y;
+    pz = z;
+    previous = distance;
+  }
+  return result;
+}
+function face(ax, ay, az, x, y, z, r, bx, by, bz, axis, margin) {
+  const sign = (axis === 0 ? x : axis === 1 ? y : z) >= 0 ? 1 : -1;
+  faceSign = sign;
+  const half = axis === 0 ? ax : axis === 1 ? ay : az, row = axis * 3;
+  const rx = Math.abs(r[row]), ry = Math.abs(r[row + 1]), rz = Math.abs(r[row + 2]);
+  let incident = 0;
+  if (ry > rx && ry >= rz) incident = 1;
+  else if (rz > rx && rz > ry) incident = 2;
+  const direction = sign * r[row + incident] > 0 ? -1 : 1;
+  const depth = incident === 0 ? bx : incident === 1 ? by : bz;
+  const u = incident === 0 ? 1 : 0, v = incident === 2 ? 1 : 2;
+  const hu = u === 0 ? bx : by, hv = v === 1 ? by : bz;
+  const cx = x + direction * depth * r[incident], cy = y + direction * depth * r[3 + incident], cz = z + direction * depth * r[6 + incident];
+  const ux = r[u] * hu, uy = r[3 + u] * hu, uz = r[6 + u] * hu;
+  const vx = r[v] * hv, vy = r[3 + v] * hv, vz = r[6 + v] * hv;
+  clipped[0] = cx + ux + vx;
+  clipped[1] = cy + uy + vy;
+  clipped[2] = cz + uz + vz;
+  clipped[3] = cx - ux + vx;
+  clipped[4] = cy - uy + vy;
+  clipped[5] = cz - uz + vz;
+  clipped[6] = cx - ux - vx;
+  clipped[7] = cy - uy - vy;
+  clipped[8] = cz - uz - vz;
+  clipped[9] = cx + ux - vx;
+  clipped[10] = cy + uy - vy;
+  clipped[11] = cz + uz - vz;
+  const a = axis === 0 ? 1 : 0, b = axis === 2 ? 1 : 2;
+  const ha = a === 0 ? ax : ay, hb = b === 1 ? ay : az;
+  let count = clip(clipped, 4, scratch, a, 1, ha);
+  count = clip(scratch, count, clipped, a, -1, ha);
+  count = clip(clipped, count, scratch, b, 1, hb);
+  count = clip(scratch, count, clipped, b, -1, hb);
+  let result = 0;
+  for (let i = 0; i < count; i++) {
+    const gap = sign * clipped[i * 3 + axis] - half;
+    if (gap > margin) continue;
+    candidates[result * 3] = clipped[i * 3];
+    candidates[result * 3 + 1] = clipped[i * 3 + 1];
+    candidates[result * 3 + 2] = clipped[i * 3 + 2];
+    candidates[result * 3 + axis] -= sign * gap * 0.5;
+    gaps[result++] = gap;
+  }
+  return result;
+}
+function reduce(count) {
+  if (count <= 4) return count;
+  let first = 0;
+  for (let i = 1; i < count; i++) if (gaps[i] < gaps[first]) first = i;
+  const x = candidates[first * 3], y = candidates[first * 3 + 1], z = candidates[first * 3 + 2];
+  let second = -1, maximum = -1;
+  for (let i = 0; i < count; i++) {
+    if (i === first) continue;
+    const dx2 = candidates[i * 3] - x, dy2 = candidates[i * 3 + 1] - y, dz2 = candidates[i * 3 + 2] - z;
+    const distance = dx2 * dx2 + dy2 * dy2 + dz2 * dz2;
+    if (distance > maximum) {
+      maximum = distance;
+      second = i;
+    }
+  }
+  const dx = candidates[second * 3] - x, dy = candidates[second * 3 + 1] - y, dz = candidates[second * 3 + 2] - z;
+  let third = -1, nx = 0, ny = 0, nz = 0;
+  maximum = -1;
+  for (let i = 0; i < count; i++) {
+    if (i === first || i === second) continue;
+    const px = candidates[i * 3] - x, py = candidates[i * 3 + 1] - y, pz = candidates[i * 3 + 2] - z;
+    const cx = dy * pz - dz * py, cy = dz * px - dx * pz, cz = dx * py - dy * px;
+    const area = cx * cx + cy * cy + cz * cz;
+    if (area > maximum) {
+      maximum = area;
+      third = i;
+      nx = cx;
+      ny = cy;
+      nz = cz;
+    }
+  }
+  let fourth = -1;
+  maximum = 0;
+  for (let i = 0; i < count; i++) {
+    if (i === first || i === second || i === third) continue;
+    const px = candidates[i * 3] - x, py = candidates[i * 3 + 1] - y, pz = candidates[i * 3 + 2] - z;
+    const cx = dy * pz - dz * py, cy = dz * px - dx * pz, cz = dx * py - dy * px;
+    const area = -(cx * nx + cy * ny + cz * nz);
+    if (area > maximum) {
+      maximum = area;
+      fourth = i;
+    }
+  }
+  const retained2 = fourth >= 0 ? 4 : 3;
+  selected[0] = first;
+  selected[1] = second;
+  selected[2] = third;
+  selected[3] = fourth;
+  for (let i = 1; i < retained2; i++) {
+    const value = selected[i];
+    let j = i;
+    while (j > 0 && selected[j - 1] > value) {
+      selected[j] = selected[j - 1];
+      j--;
+    }
+    selected[j] = value;
+  }
+  for (let i = 0; i < retained2; i++) {
+    const j = selected[i];
+    if (i === j) continue;
+    candidates[i * 3] = candidates[j * 3];
+    candidates[i * 3 + 1] = candidates[j * 3 + 1];
+    candidates[i * 3 + 2] = candidates[j * 3 + 2];
+    gaps[i] = gaps[j];
+  }
+  return retained2;
+}
+function boxManifold(ax, ay, az, x, y, z, r, bx, by, bz, margin) {
+  const r00 = r[0], r01 = r[1], r02 = r[2], r10 = r[3], r11 = r[4], r12 = r[5], r20 = r[6], r21 = r[7], r22 = r[8];
+  const a00 = Math.abs(r00), a01 = Math.abs(r01), a02 = Math.abs(r02), a10 = Math.abs(r10), a11 = Math.abs(r11), a12 = Math.abs(r12), a20 = Math.abs(r20), a21 = Math.abs(r21), a22 = Math.abs(r22);
+  let gap = Math.abs(x) - (ax + bx * a00 + by * a01 + bz * a02);
+  if (gap > margin) return 0;
+  let faceGap = gap, axis = 0;
+  gap = Math.abs(y) - (ay + bx * a10 + by * a11 + bz * a12);
+  if (gap > margin) return 0;
+  if (gap > faceGap) {
+    faceGap = gap;
+    axis = 1;
+  }
+  gap = Math.abs(z) - (az + bx * a20 + by * a21 + bz * a22);
+  if (gap > margin) return 0;
+  if (gap > faceGap) {
+    faceGap = gap;
+    axis = 2;
+  }
+  const epsilon = 1e-12;
+  const row0 = a00 > 1 - epsilon ? a01 < epsilon && a02 < epsilon ? 0 : -1 : a01 > 1 - epsilon ? a00 < epsilon && a02 < epsilon ? 1 : -1 : a02 > 1 - epsilon && a00 < epsilon && a01 < epsilon ? 2 : -1;
+  let row1 = -1, row2 = -1;
+  if (row0 >= 0) {
+    row1 = a10 > 1 - epsilon ? a11 < epsilon && a12 < epsilon ? 0 : -1 : a11 > 1 - epsilon ? a10 < epsilon && a12 < epsilon ? 1 : -1 : a12 > 1 - epsilon && a10 < epsilon && a11 < epsilon ? 2 : -1;
+    if (row1 >= 0 && row1 !== row0) row2 = a20 > 1 - epsilon ? a21 < epsilon && a22 < epsilon ? 0 : -1 : a21 > 1 - epsilon ? a20 < epsilon && a22 < epsilon ? 1 : -1 : a22 > 1 - epsilon && a20 < epsilon && a21 < epsilon ? 2 : -1;
+  }
+  const aligned = row2 >= 0 && row2 !== row0 && row2 !== row1;
+  let px = 0, py = 0, pz = 0, edgeGap = -Infinity, edgeA = -1, edgeB = -1, nx = 0, ny = 0, nz = 0;
+  if (!aligned) {
+    px = x * r00 + y * r10 + z * r20;
+    py = x * r01 + y * r11 + z * r21;
+    pz = x * r02 + y * r12 + z * r22;
+    gap = Math.abs(px) - (bx + ax * a00 + ay * a10 + az * a20);
+    if (gap > margin) return 0;
+    if (gap > faceGap) {
+      faceGap = gap;
+      axis = 3;
+    }
+    gap = Math.abs(py) - (by + ax * a01 + ay * a11 + az * a21);
+    if (gap > margin) return 0;
+    if (gap > faceGap) {
+      faceGap = gap;
+      axis = 4;
+    }
+    gap = Math.abs(pz) - (bz + ax * a02 + ay * a12 + az * a22);
+    if (gap > margin) return 0;
+    if (gap > faceGap) {
+      faceGap = gap;
+      axis = 5;
+    }
+    for (let i = 0; i < 3; i++) {
+      const rx = Math.abs(r[i * 3]), ry = Math.abs(r[i * 3 + 1]), rz = Math.abs(r[i * 3 + 2]);
+      for (let j = 0; j < 3; j++) {
+        const ux = r[j], uy = r[3 + j], uz = r[6 + j];
+        const cx = i === 0 ? 0 : i === 1 ? uz : -uy;
+        const cy = i === 0 ? -uz : i === 1 ? 0 : ux;
+        const cz = i === 0 ? uy : i === 1 ? -ux : 0;
+        const lengthSq = cx * cx + cy * cy + cz * cz;
+        if (lengthSq < 1e-6) continue;
+        const projection = x * cx + y * cy + z * cz;
+        const extentA = ax * Math.abs(cx) + ay * Math.abs(cy) + az * Math.abs(cz);
+        const extentB = j === 0 ? by * rz + bz * ry : j === 1 ? bx * rz + bz * rx : bx * ry + by * rx;
+        const inverse = 1 / Math.sqrt(lengthSq);
+        gap = (Math.abs(projection) - extentA - extentB) * inverse;
+        if (gap > margin) return 0;
+        if (gap > edgeGap) {
+          edgeGap = gap;
+          edgeA = i;
+          edgeB = j;
+          const sign2 = projection >= 0 ? inverse : -inverse;
+          nx = cx * sign2;
+          ny = cy * sign2;
+          nz = cz * sign2;
+        }
+      }
+    }
+  }
+  if (edgeA >= 0 && edgeGap > faceGap + 4e-3 + 0.05 * Math.abs(faceGap)) {
+    let sx = nx >= 0 ? ax : -ax, sy = ny >= 0 ? ay : -ay, sz = nz >= 0 ? az : -az;
+    if (edgeA === 0) sx = 0;
+    else if (edgeA === 1) sy = 0;
+    else sz = 0;
+    let tx = x, ty = y, tz = z;
+    for (let j = 0; j < 3; j++) {
+      if (j === edgeB) continue;
+      const ux2 = r[j], uy2 = r[3 + j], uz2 = r[6 + j], half = j === 0 ? bx : j === 1 ? by : bz;
+      const sign2 = nx * ux2 + ny * uy2 + nz * uz2 >= 0 ? -half : half;
+      tx += ux2 * sign2;
+      ty += uy2 * sign2;
+      tz += uz2 * sign2;
+    }
+    const ux = r[edgeB], uy = r[3 + edgeB], uz = r[6 + edgeB], dx = sx - tx, dy = sy - ty, dz = sz - tz;
+    const dot = edgeA === 0 ? ux : edgeA === 1 ? uy : uz;
+    const da = edgeA === 0 ? dx : edgeA === 1 ? dy : dz, db = ux * dx + uy * dy + uz * dz, divisor = 1 - dot * dot;
+    let ta = 0, tb = 0;
+    if (divisor > 1e-9) {
+      ta = (dot * db - da) / divisor;
+      tb = (db - dot * da) / divisor;
+    }
+    const ha = edgeA === 0 ? ax : edgeA === 1 ? ay : az, hb = edgeB === 0 ? bx : edgeB === 1 ? by : bz;
+    ta = Math.max(-ha, Math.min(ha, ta));
+    tb = Math.max(-hb, Math.min(hb, tb));
+    if (edgeA === 0) sx = ta;
+    else if (edgeA === 1) sy = ta;
+    else sz = ta;
+    tx += ux * tb;
+    ty += uy * tb;
+    tz += uz * tb;
+    manifoldNormal[0] = nx;
+    manifoldNormal[1] = ny;
+    manifoldNormal[2] = nz;
+    manifoldPoints[0] = (sx + tx) * 0.5;
+    manifoldPoints[1] = (sy + ty) * 0.5;
+    manifoldPoints[2] = (sz + tz) * 0.5;
+    manifoldSeparations[0] = edgeGap;
+    return 1;
+  }
+  if (axis < 3) {
+    const count2 = reduce(face(ax, ay, az, x, y, z, r, bx, by, bz, axis, margin));
+    manifoldNormal[0] = 0;
+    manifoldNormal[1] = 0;
+    manifoldNormal[2] = 0;
+    manifoldNormal[axis] = faceSign;
+    for (let i = 0; i < count2; i++) {
+      manifoldPoints[i * 3] = candidates[i * 3];
+      manifoldPoints[i * 3 + 1] = candidates[i * 3 + 1];
+      manifoldPoints[i * 3 + 2] = candidates[i * 3 + 2];
+      manifoldSeparations[i] = gaps[i];
+    }
+    return count2;
+  }
+  const column = axis - 3;
+  transpose[0] = r00;
+  transpose[1] = r10;
+  transpose[2] = r20;
+  transpose[3] = r01;
+  transpose[4] = r11;
+  transpose[5] = r21;
+  transpose[6] = r02;
+  transpose[7] = r12;
+  transpose[8] = r22;
+  const count = reduce(face(bx, by, bz, -px, -py, -pz, transpose, ax, ay, az, column, margin)), sign = -faceSign;
+  manifoldNormal[0] = sign * r[column];
+  manifoldNormal[1] = sign * r[3 + column];
+  manifoldNormal[2] = sign * r[6 + column];
+  for (let i = 0; i < count; i++) {
+    const cx = candidates[i * 3], cy = candidates[i * 3 + 1], cz = candidates[i * 3 + 2];
+    manifoldPoints[i * 3] = r00 * cx + r01 * cy + r02 * cz + x;
+    manifoldPoints[i * 3 + 1] = r10 * cx + r11 * cy + r12 * cz + y;
+    manifoldPoints[i * 3 + 2] = r20 * cx + r21 * cy + r22 * cz + z;
+    manifoldSeparations[i] = gaps[i];
+  }
+  return count;
+}
+
+// src/core/collision/narrowphase/soft-box-box-detector.ts
+var SoftBoxBoxDetector = class extends Detector {
+  constructor() {
+    super(false);
+    this.relative = new Array(9).fill(0);
+  }
+  detectImpl(result, ga, gb, ta, tb, _cache, margin) {
+    result.incremental = false;
+    const a = ga, b = gb, r = this.relative;
+    r[0] = ta.r00 * tb.r00 + ta.r10 * tb.r10 + ta.r20 * tb.r20;
+    r[1] = ta.r00 * tb.r01 + ta.r10 * tb.r11 + ta.r20 * tb.r21;
+    r[2] = ta.r00 * tb.r02 + ta.r10 * tb.r12 + ta.r20 * tb.r22;
+    r[3] = ta.r01 * tb.r00 + ta.r11 * tb.r10 + ta.r21 * tb.r20;
+    r[4] = ta.r01 * tb.r01 + ta.r11 * tb.r11 + ta.r21 * tb.r21;
+    r[5] = ta.r01 * tb.r02 + ta.r11 * tb.r12 + ta.r21 * tb.r22;
+    r[6] = ta.r02 * tb.r00 + ta.r12 * tb.r10 + ta.r22 * tb.r20;
+    r[7] = ta.r02 * tb.r01 + ta.r12 * tb.r11 + ta.r22 * tb.r21;
+    r[8] = ta.r02 * tb.r02 + ta.r12 * tb.r12 + ta.r22 * tb.r22;
+    const dx = tb.px - ta.px, dy = tb.py - ta.py, dz = tb.pz - ta.pz;
+    const count = boxManifold(
+      a.hx,
+      a.hy,
+      a.hz,
+      ta.r00 * dx + ta.r10 * dy + ta.r20 * dz,
+      ta.r01 * dx + ta.r11 * dy + ta.r21 * dz,
+      ta.r02 * dx + ta.r12 * dy + ta.r22 * dz,
+      r,
+      b.hx,
+      b.hy,
+      b.hz,
+      margin
+    );
+    if (count === 0) return;
+    const nx = ta.r00 * manifoldNormal[0] + ta.r01 * manifoldNormal[1] + ta.r02 * manifoldNormal[2];
+    const ny = ta.r10 * manifoldNormal[0] + ta.r11 * manifoldNormal[1] + ta.r12 * manifoldNormal[2];
+    const nz = ta.r20 * manifoldNormal[0] + ta.r21 * manifoldNormal[1] + ta.r22 * manifoldNormal[2];
+    result.nx = -nx;
+    result.ny = -ny;
+    result.nz = -nz;
+    result.numPoints = count;
+    for (let i = 0; i < count; i++) {
+      const p = result.points[i], x = manifoldPoints[i * 3], y = manifoldPoints[i * 3 + 1], z = manifoldPoints[i * 3 + 2];
+      const wx = ta.px + ta.r00 * x + ta.r01 * y + ta.r02 * z;
+      const wy = ta.py + ta.r10 * x + ta.r11 * y + ta.r12 * z;
+      const wz = ta.pz + ta.r20 * x + ta.r21 * y + ta.r22 * z;
+      const half = manifoldSeparations[i] * 0.5;
+      p.p1x = wx - nx * half;
+      p.p1y = wy - ny * half;
+      p.p1z = wz - nz * half;
+      p.p2x = wx + nx * half;
+      p.p2y = wy + ny * half;
+      p.p2z = wz + nz * half;
+      p.depth = -manifoldSeparations[i];
+      p.id = i;
+    }
+  }
+};
+
 // src/core/dynamics/constraint/solver/pgs-contact-constraint-solver.ts
 var MassDataRow = class {
   constructor() {
@@ -13192,18 +13861,20 @@ var ManifoldUpdater = class {
   constructor(manifold) {
     this.oldIds = [];
     this.oldImpulses = [];
+    this.oldAnchors = [];
     this.manifold = manifold;
     for (let i = 0; i < MAX_MANIFOLD_POINTS; i++) {
       this.oldIds.push(-1);
       this.oldImpulses.push(new ContactImpulse());
+      this.oldAnchors.push({ ax: 0, ay: 0, az: 0, bx: 0, by: 0, bz: 0 });
     }
   }
-  /** 一次性更新：整个流形换成新的检测结果 */
-  totalUpdate(result, tf1, tf2) {
+  /** 一次性更新；子步模式按两侧局部锚点匹配，每个旧点最多使用一次。 */
+  totalUpdate(result, tf1, tf2, checkAnchors = false) {
     const m = this.manifold;
     const numOldPoints = m.numPoints;
     const num = result.numPoints;
-    let unchanged = num === numOldPoints;
+    let unchanged = !checkAnchors && num === numOldPoints;
     for (let i = 0; unchanged && i < num; i++) {
       const id = result.points[i].id;
       if (id !== m.points[i].id || i > 0 && id <= result.points[i - 1].id) unchanged = false;
@@ -13222,13 +13893,31 @@ var ManifoldUpdater = class {
     for (let i = 0; i < numOldPoints; i++) {
       this.oldIds[i] = m.points[i].id;
       this.oldImpulses[i].copyFrom(m.points[i].impulse);
+      if (checkAnchors) {
+        const p = m.points[i], a = this.oldAnchors[i];
+        a.ax = p.lp1X;
+        a.ay = p.lp1Y;
+        a.az = p.lp1Z;
+        a.bx = p.lp2X;
+        a.by = p.lp2Y;
+        a.bz = p.lp2Z;
+      }
     }
     m.numPoints = num;
+    let used = 0;
     for (let i = 0; i < num; i++) {
       const p = m.points[i];
       p.initialize(result.points[i], tf1, tf2);
       for (let k = 0; k < numOldPoints; k++) {
-        if (p.id === this.oldIds[k]) {
+        if (checkAnchors || p.id === this.oldIds[k]) {
+          if (checkAnchors) {
+            if ((used & 1 << k) !== 0) continue;
+            const a = this.oldAnchors[k];
+            const dx = p.lp1X - a.ax, dy = p.lp1Y - a.ay, dz = p.lp1Z - a.az;
+            const ex = p.lp2X - a.bx, ey = p.lp2Y - a.by, ez = p.lp2Z - a.bz;
+            if (dx * dx + dy * dy + dz * dz >= 25e-4 || ex * ex + ey * ey + ez * ez >= 25e-4) continue;
+            used |= 1 << k;
+          }
           p.impulse.copyFrom(this.oldImpulses[k]);
           p.warmStarted = true;
           break;
@@ -13352,6 +14041,7 @@ var ManifoldUpdater = class {
 };
 
 // src/core/dynamics/contact.ts
+var softBoxDetector = new SoftBoxBoxDetector();
 var ContactLink = class {
   constructor() {
     this.prev = null;
@@ -13447,6 +14137,8 @@ var Contact = class {
     if (this.detector === null) return;
     const s1 = this.s1, s2 = this.s2, result = this.detectorResult;
     const b1 = this.b1, b2 = this.b2;
+    const boxPair = s1.geom.type === GeometryType.BOX && s2.geom.type === GeometryType.BOX;
+    const detector = speculative && boxPair ? softBoxDetector : this.detector;
     let margin = s1.speculativeMargin + s2.speculativeMargin;
     if (margin > 0 && b1.type !== RigidBodyType.STATIC && b2.type !== RigidBodyType.STATIC) {
       const w = b1.world;
@@ -13456,18 +14148,37 @@ var Contact = class {
       margin = w.speculativeDistance + w.speculativeTick() * speed;
       if (margin > w.maxSpeculativeDistance) margin = w.maxSpeculativeDistance;
     }
-    this.detector.detect(result, s1.geom, s2.geom, s1.transform, s2.transform, this.cachedDetectorData, margin);
+    if (speculative && b1.type !== RigidBodyType.STATIC && b2.type === RigidBodyType.STATIC && boxPair) {
+      detector.detect(result, s2.geom, s1.geom, s2.transform, s1.transform, this.cachedDetectorData, margin);
+      result.nx = -result.nx;
+      result.ny = -result.ny;
+      result.nz = -result.nz;
+      for (let i = 0; i < result.numPoints; i++) {
+        const p = result.points[i], x = p.p1x, y = p.p1y, z = p.p1z;
+        p.p1x = p.p2x;
+        p.p1y = p.p2y;
+        p.p1z = p.p2z;
+        p.p2x = x;
+        p.p2y = y;
+        p.p2z = z;
+      }
+    } else {
+      detector.detect(result, s1.geom, s2.geom, s1.transform, s2.transform, this.cachedDetectorData, margin);
+    }
     if (s1.contactFilter !== null) s1.contactFilter(s1, result, true, s2);
     if (s2.contactFilter !== null) s2.contactFilter(s2, result, false, s1);
     const found = result.numPoints > 0;
     if (!speculative) this.touching = found;
     if (found) {
+      if (speculative && this.manifold.nX * result.nx + this.manifold.nY * result.ny + this.manifold.nZ * result.nz <= 0.99) {
+        this.manifold.clear();
+      }
       this.manifold.buildBasis(result.nx, result.ny, result.nz);
       this.contactConstraint.positionCorrectionAlgorithm = result.getMaxDepth() > ALTERNATIVE_POSITION_CORRECTION_DEPTH_THRESHOLD ? ALTERNATIVE_CONTACT_POSITION_CORRECTION_ALGORITHM : DEFAULT_CONTACT_POSITION_CORRECTION_ALGORITHM;
       if (result.incremental) {
         this.updater.incrementalUpdate(result, this.b1.transform, this.b2.transform, margin);
       } else {
-        this.updater.totalUpdate(result, this.b1.transform, this.b2.transform);
+        this.updater.totalUpdate(result, this.b1.transform, this.b2.transform, speculative);
       }
     } else {
       this.manifold.clear();
@@ -13658,10 +14369,12 @@ var SoftSubstepParams = class {
     this.substeps = 1;
     /**
      * 接触带偏置、松弛各解几遍。这个 tick 有接触的靠近速度超过 impactVelocity（m/s）时，两个阶段都解 impactIterations 遍，
-     * 第一遍之后只解碰到被撞刚体的接触
+     * 超出常规遍数的部分仅处理被撞刚体的接触。
      */
     this.iterations = 1;
     this.relaxIterations = 1;
+    this.tolerance = 0;
+    this.adaptiveIterations = false;
     this.impactIterations = 0;
     this.impactVelocity = 0;
     /** 子步结束后的反弹遍数；靠近速度超过 restitutionThreshold（m/s）的接触才反弹 */
@@ -13697,23 +14410,36 @@ var Island = class {
     this.gravityY = 0;
     this.gravityZ = 0;
     this.rigidBodies = [];
+    this.drags = [];
     this.solvers = [];
     /** 位置修正用 split impulse、NGS 的约束 */
     this.solversSi = [];
     this.solversNgs = [];
     /** 软接触求解器列表；关节求解器保存在 solvers 中。 */
     this.softContacts = [];
+    this.orderedContacts = [];
     /** beginSubsteps 计算的带偏置、松弛及速度迭代次数，供 runSubsteps 使用。 */
     this.biasPasses = 0;
     this.relaxPasses = 0;
     this.solveTotal = 0;
+    this.conditionedContacts = false;
+    this.quietContacts = false;
+    this.isotropicContacts = false;
+    this.minMass = Infinity;
+    this.maxMass = 0;
+    this.extendedBody = false;
   }
   clear() {
     this.rigidBodies.length = 0;
+    this.drags.length = 0;
     this.solvers.length = 0;
     this.solversSi.length = 0;
     this.solversNgs.length = 0;
     this.softContacts.length = 0;
+    this.orderedContacts.length = 0;
+    this.minMass = Infinity;
+    this.maxMass = 0;
+    this.extendedBody = false;
   }
   setGravity(x, y, z) {
     this.gravityX = x;
@@ -13723,6 +14449,16 @@ var Island = class {
   addRigidBody(rb) {
     rb.addedToIsland = true;
     this.rigidBodies.push(rb);
+    if (rb.drag !== null) this.drags.push(rb.drag);
+    if (rb.type === RigidBodyType.DYNAMIC) {
+      if (rb.mass < this.minMass) this.minMass = rb.mass;
+      if (rb.mass > this.maxMass) this.maxMass = rb.mass;
+      if (Math.max(rb.li00, rb.li11, rb.li22) > 1.5 * Math.min(rb.li00, rb.li11, rb.li22)) this.extendedBody = true;
+    }
+  }
+  /** 大质量比接触保留支撑所需的子步数。 */
+  supportSubsteps(base, minimum) {
+    return base < minimum && this.softContacts.length > 0 && this.maxMass >= this.minMass * 8 ? minimum : base;
   }
   addConstraintSolver(solver, positionCorrection) {
     solver.addedToIsland = true;
@@ -13871,6 +14607,17 @@ var Island = class {
    */
   beginSubsteps(tick, sub, p) {
     const bodies = this.rigidBodies, joints = this.solvers, contacts = this.softContacts;
+    const ordered = this.orderedContacts;
+    ordered.length = 0;
+    for (let i = 0; i < contacts.length; i++) {
+      const c = contacts[i].constraint;
+      if (c.b1.type === RigidBodyType.STATIC || c.b2.type === RigidBodyType.STATIC) ordered.push(contacts[i]);
+    }
+    for (let i = 0; i < contacts.length; i++) {
+      const c = contacts[i].constraint;
+      if (c.b1.type !== RigidBodyType.STATIC && c.b2.type !== RigidBodyType.STATIC) ordered.push(contacts[i]);
+    }
+    for (let i = 0; i < contacts.length; i++) contacts[i] = ordered[i];
     for (let i = 0; i < bodies.length; i++) {
       const rb = bodies[i];
       rb.ptransform.copyFrom(rb.transform);
@@ -13896,10 +14643,27 @@ var Island = class {
       const c = contacts[i].constraint;
       contacts[i].impacted = impact && (c.b1.impactStamp === stamp || c.b2.impactStamp === stamp);
     }
-    const passes = impact ? p.impactIterations : p.iterations;
+    this.conditionedContacts = (contacts.length > 8 || this.extendedBody) && this.maxMass >= this.minMass * 8;
+    const minimumPasses = this.conditionedContacts ? Math.min(40, Math.max(10, Math.ceil(this.maxMass / this.minMass / 4))) : 0;
+    const passes = Math.max(minimumPasses, impact ? Math.max(p.impactIterations, p.iterations) : p.iterations);
     this.biasPasses = passes;
-    this.relaxPasses = impact ? p.impactIterations : p.relaxIterations;
+    this.relaxPasses = Math.max(minimumPasses, impact ? Math.max(p.impactIterations, p.relaxIterations) : p.relaxIterations);
     this.solveTotal = joints.length > 0 && p.jointIterations > passes ? p.jointIterations : passes;
+    let quiet = p.adaptiveIterations && !impact && !this.conditionedContacts && joints.length === 0 && (p.substeps >= 4 || p.substeps === 1);
+    let isotropic = true;
+    for (let i = 0; quiet && i < bodies.length; i++) {
+      const b = bodies[i];
+      if (b.type === RigidBodyType.STATIC) continue;
+      if (b.type !== RigidBodyType.DYNAMIC || b.drag !== null) {
+        quiet = false;
+        break;
+      }
+      const limit = Math.max(b.sleepingVelocityThreshold, b.sleepingAngularVelocityThreshold);
+      if (b.vx * b.vx + b.vy * b.vy + b.vz * b.vz + b.wx * b.wx + b.wy * b.wy + b.wz * b.wz >= limit * limit || b.fx !== 0 || b.fy !== 0 || b.fz !== 0 || b.tx !== 0 || b.ty !== 0 || b.tz !== 0 || p.sea && (p.seaStartY - b.transform.py) * p.seaDepthGradient >= 0) quiet = false;
+      if (b.li01 !== 0 || b.li02 !== 0 || b.li12 !== 0 || b.li00 !== b.li11 || b.li11 !== b.li22) isotropic = false;
+    }
+    this.quietContacts = quiet;
+    this.isotropicContacts = isotropic;
     return true;
   }
   /** 执行 substeps 个子步，仅在 beginSubsteps 返回 true 时调用。 */
@@ -13908,35 +14672,86 @@ var Island = class {
     const bodies = this.rigidBodies, joints = this.solvers, contacts = this.softContacts;
     const jointsSi = this.solversSi, jointsNgs = this.solversNgs;
     const dynamic = p.dynamic, fixed = p.fixed, push = p.maxPushVelocity;
-    const passes = this.biasPasses, relaxPasses = this.relaxPasses, total = this.solveTotal;
+    const reuseAcrossSubsteps = this.relaxPasses > 0 && jointsSi.length === 0 && jointsNgs.length === 0;
+    const drags = this.drags;
+    const aggregateWarmStart = joints.length === 0 && drags.length === 0;
     let parity = p.parity;
-    const reuseAcrossSubsteps = relaxPasses > 0 && jointsSi.length === 0 && jointsNgs.length === 0;
+    let quiet = this.quietContacts;
     for (let s = 0; s < n; s++) {
       if (s > 0) sub.dtRatio = 1;
       for (let i = 0; i < bodies.length; i++) if (bodies[i].type === RigidBodyType.DYNAMIC) this.applySoftForces(bodies[i], h, p);
       for (let i = 0; i < joints.length; i++) joints[i].preSolveVelocity(sub);
-      for (let i = 0; i < joints.length; i++) joints[i].warmStart(sub);
-      for (let i = 0; i < contacts.length; i++) contacts[i].warmStart();
+      const ratio = sub.dtRatio;
+      for (let i = 0; i < joints.length; i++) {
+        const joint = joints[i];
+        sub.dtRatio = s > 0 || joint.softSubstepDt === 0 ? ratio : h / joint.softSubstepDt;
+        joint.warmStart(sub);
+        joint.softSubstepDt = h;
+      }
+      for (let i = 0; i < drags.length; i++) drags[i].warmStart();
+      if (aggregateWarmStart) for (let i = 0; i < bodies.length; i++) {
+        const b = bodies[i];
+        if (b.type !== RigidBodyType.DYNAMIC) continue;
+        const vx = b.vx, vy = b.vy, vz = b.vz, wx = b.wx, wy = b.wy, wz = b.wz;
+        if (s > 0) {
+          b.vx += b.contactDeltaVX;
+          b.vy += b.contactDeltaVY;
+          b.vz += b.contactDeltaVZ;
+          b.wx += b.contactDeltaWX;
+          b.wy += b.contactDeltaWY;
+          b.wz += b.contactDeltaWZ;
+        }
+        b.contactDeltaVX = vx;
+        b.contactDeltaVY = vy;
+        b.contactDeltaVZ = vz;
+        b.contactDeltaWX = wx;
+        b.contactDeltaWY = wy;
+        b.contactDeltaWZ = wz;
+      }
+      if (!aggregateWarmStart || s === 0) for (let i = 0; i < contacts.length; i++) contacts[i].warmStart();
+      for (let i = 0; i < drags.length; i++) drags[i].solve(h, (s + 1) / n);
+      for (let i = 0; quiet && i < bodies.length; i++) {
+        const b = bodies[i], limit = Math.max(b.sleepingVelocityThreshold, b.sleepingAngularVelocityThreshold);
+        if (b.type === RigidBodyType.STATIC) continue;
+        if (b.vx * b.vx + b.vy * b.vy + b.vz * b.vz + b.wx * b.wx + b.wy * b.wy + b.wz * b.wz >= 4 * limit * limit) quiet = false;
+      }
+      const passes = quiet ? Math.min(this.biasPasses, this.isotropicContacts && (s > 0 || n === 1) ? 1 : 2) : this.biasPasses;
+      const relaxPasses = quiet ? Math.min(this.relaxPasses, n > 1 || this.isotropicContacts ? 1 : 2) : this.relaxPasses;
+      const total = quiet ? passes : this.solveTotal;
       for (let k = 0; k < total; k++) {
         for (let i = 0; i < joints.length; i++) joints[i].solveVelocity();
         const t = k - (total - passes);
         if (t < 0) continue;
         const reuse = t > 0 || s > 0 && reuseAcrossSubsteps;
+        let error = 0;
         if ((t + parity & 1) === 0) {
-          for (let i = 0; i < contacts.length; i++) if (t === 0 || contacts[i].impacted) contacts[i].solve(true, false, invH, dynamic, fixed, push, reuse);
+          for (let i = 0; i < contacts.length; i++) if (this.conditionedContacts || t < p.iterations || contacts[i].impacted) error += contacts[i].solve(true, false, invH, dynamic, fixed, push, reuse);
         } else {
-          for (let i = contacts.length - 1; i >= 0; i--) if (t === 0 || contacts[i].impacted) contacts[i].solve(true, true, invH, dynamic, fixed, push, reuse);
+          for (let i = contacts.length - 1; i >= 0; i--) if (this.conditionedContacts || t < p.iterations || contacts[i].impacted) error += contacts[i].solve(true, true, invH, dynamic, fixed, push, reuse);
         }
+        if (joints.length === 0 && error < p.tolerance) break;
       }
       for (let i = 0; i < joints.length; i++) joints[i].postSolveVelocity(sub);
       for (let i = 0; i < bodies.length; i++) bodies[i].integrate(h);
       for (let t = 0; t < relaxPasses; t++) {
         const reuse = t > 0;
+        let error = 0;
         if ((t + parity & 1) === 0) {
-          for (let i = contacts.length - 1; i >= 0; i--) if (t === 0 || contacts[i].impacted) contacts[i].solve(false, true, invH, dynamic, fixed, push, reuse);
+          for (let i = contacts.length - 1; i >= 0; i--) if (this.conditionedContacts || t < p.relaxIterations || contacts[i].impacted) error += contacts[i].solve(false, true, invH, dynamic, fixed, push, reuse);
         } else {
-          for (let i = 0; i < contacts.length; i++) if (t === 0 || contacts[i].impacted) contacts[i].solve(false, false, invH, dynamic, fixed, push, reuse);
+          for (let i = 0; i < contacts.length; i++) if (this.conditionedContacts || t < p.relaxIterations || contacts[i].impacted) error += contacts[i].solve(false, false, invH, dynamic, fixed, push, reuse);
         }
+        if (joints.length === 0 && error < p.tolerance) break;
+      }
+      if (aggregateWarmStart) for (let i = 0; i < bodies.length; i++) {
+        const b = bodies[i];
+        if (b.type !== RigidBodyType.DYNAMIC) continue;
+        b.contactDeltaVX = b.vx - b.contactDeltaVX;
+        b.contactDeltaVY = b.vy - b.contactDeltaVY;
+        b.contactDeltaVZ = b.vz - b.contactDeltaVZ;
+        b.contactDeltaWX = b.wx - b.contactDeltaWX;
+        b.contactDeltaWY = b.wy - b.contactDeltaWY;
+        b.contactDeltaWZ = b.wz - b.contactDeltaWZ;
       }
       for (let i = 0; i < jointsSi.length; i++) jointsSi[i].preSolvePosition(sub);
       for (let t = 0; t < p.positionIterations; t++) {
@@ -13970,7 +14785,8 @@ var Island = class {
     for (let i = 0; i < bodies.length; i++) {
       const rb = bodies[i];
       if (rb.type === RigidBodyType.DYNAMIC) this.limitState(rb, p);
-      if (rb.isSleepy() && !rb.restless) rb.sleepTime += dt;
+      rb.drag?.finish();
+      if (rb.isSleepy() && !rb.restless && rb.drag === null) rb.sleepTime += dt;
       else rb.sleepTime = 0;
       if (rb.sleepTime < rb.sleepingTimeThreshold) sleepIsland = false;
     }
@@ -14005,13 +14821,16 @@ var Island = class {
     const dynamic = rb.type === RigidBodyType.DYNAMIC;
     for (let s = 0; s < p.substeps; s++) {
       if (dynamic) this.applySoftForces(rb, h, p);
+      rb.drag?.warmStart();
+      rb.drag?.solve(h, (s + 1) / p.substeps);
       rb.integrate(h);
     }
   }
   /** 完成孤立刚体的限速、休眠计时和形状同步。 */
   finishSingleRigidBodySubsteps(tick, p, rb) {
+    rb.drag?.finish();
     if (rb.type === RigidBodyType.DYNAMIC) this.limitState(rb, p);
-    if (rb.isSleepy() && !rb.restless) {
+    if (rb.isSleepy() && !rb.restless && rb.drag === null) {
       rb.sleepTime += tick.dt;
       if (rb.sleepTime >= rb.sleepingTimeThreshold) {
         rb.sleep();
@@ -14173,8 +14992,13 @@ var World = class {
     this.softIterations = 3;
     /** 软接触：积分之后松弛解几遍 */
     this.softRelaxIterations = 3;
+    /** 冲量变化总量低于此值时结束本阶段迭代；0 表示固定遍数。 */
+    this.softTolerance = 0;
+    /** 低速且无关节的接触岛减少常规迭代，受力或速度增大时恢复。 */
+    this.softAdaptiveIterations = false;
     /**
-     * 软接触：撞击时多解几遍。单步时加在松弛阶段；多个子步时（softSubsteps 大于 0）两个阶段都解这么多遍，第一遍之后只解碰到被撞刚体的接触
+     * 撞击迭代次数。子步模式下，超出常规遍数的部分仅处理被撞刚体的接触。
+     * 单步模式将此值加到松弛遍数上。
      */
     this.softImpactIterations = 4;
     /** 软接触：靠近速度超过它（m/s）算撞击 */
@@ -14200,6 +15024,10 @@ var World = class {
      * 正值使碰撞检测和接触准备每步仅执行一次，子步执行求解和积分；仅在 softContacts 开启时有效。
      */
     this.softSubsteps = 0;
+    /** 大质量比接触岛的子步数下限，0 表示不单独调整。 */
+    this.softSupportSubsteps = 0;
+    /** 最近一次步进中各岛使用的最大子步数。 */
+    this.lastMaxSubsteps = 0;
     /**
      * 预测接触的基础距离，单位为米，仅在 softSubsteps > 0 时生效。
      * 静态接触按形状运动范围扩展，动态接触按受限的相对运动速度扩展，上限为 maxSpeculativeDistance。
@@ -14265,10 +15093,7 @@ var World = class {
     ts.invDt = 1 / dt;
     const substepped = this.softContacts && this.softSubsteps > 0;
     this.contactManager.speculative = substepped;
-    if (substepped) {
-      this.syncStaleBodies();
-      this.wakeTouched();
-    }
+    if (substepped) this.wakeContacts(dt);
     this.contactManager.updateContacts();
     this.contactManager.updateManifolds();
     this.clearRestless();
@@ -14475,11 +15300,16 @@ var World = class {
     }
   }
   /** 碰撞检测前按当前速度同步 speculativeStale 刚体的预测距离和包围盒。 */
-  syncStaleBodies() {
-    const t = this.speculativeTick();
+  syncStaleBodies(t) {
     for (let b = this.rigidBodyList; b !== null; b = b.next) {
       if (b.speculativeStale && b.type !== RigidBodyType.STATIC) b.syncShapesSpeculative(t, this.speculativeDistance, this.maxSpeculativeDistance);
     }
+  }
+  /** 在地形请求之前唤醒可能受撞击的刚体，使其支撑碰撞体在本步恢复。 */
+  wakeContacts(dt) {
+    if (!this.softContacts || this.softSubsteps <= 0) return;
+    this.syncStaleBodies(dt);
+    this.wakeTouched();
   }
   /**
    * 唤醒与高速活动刚体包围盒重叠的休眠刚体，跳过 wakeLocked 对象。
@@ -14518,6 +15348,7 @@ var World = class {
     island.setGravity(this.gravityX, this.gravityY, this.gravityZ);
     this.numIslands = 0;
     const n = this.softSubsteps;
+    this.lastMaxSubsteps = n;
     const h = this.timeStep.dt / n;
     const sub = this.subTimeStep;
     const firstRatio = sub.dt > 0 ? h / sub.dt : 1;
@@ -14530,6 +15361,8 @@ var World = class {
     p.substeps = n;
     p.iterations = this.softIterations;
     p.relaxIterations = this.softRelaxIterations;
+    p.tolerance = this.softTolerance;
+    p.adaptiveIterations = this.softAdaptiveIterations;
     p.impactIterations = this.softImpactIterations;
     p.impactVelocity = this.softImpactVelocity;
     p.jointIterations = this.numVelocityIterations;
@@ -14553,11 +15386,27 @@ var World = class {
     p.skin = this.softContactSkin;
     const clock = this.clock;
     const tick = this.timeStep;
+    let minMass = Infinity;
+    if (n < this.softSupportSubsteps) {
+      for (let b = this.rigidBodyList; b !== null; b = b.next) {
+        if (b.type === RigidBodyType.DYNAMIC && b.mass > 0 && b.mass < minMass) minMass = b.mass;
+      }
+    }
     let substepMs = 0;
     for (let b = this.rigidBodyList; b !== null; b = b.next) {
       if (b.addedToIsland || b.sleeping || b.type === RigidBodyType.STATIC) continue;
       const alone = b.isAlone();
       if (!alone) this.buildIsland(b, true);
+      const count = alone ? b.mass >= minMass * 8 ? Math.max(n, this.softSupportSubsteps) : n : island.supportSubsteps(n, this.softSupportSubsteps);
+      if (count !== p.substeps) {
+        p.substeps = count;
+        const dt = tick.dt / count, limit = this.softHertzStepRatio / dt;
+        sub.dt = dt;
+        sub.invDt = 1 / dt;
+        this.softDynamic.set(Math.min(this.softContactHertz, limit), this.softDampingRatio, dt);
+        this.softFixed.set(Math.min(this.softContactHertz * this.softFixedHertzScale, limit * this.softFixedHertzScale), this.softDampingRatio, dt);
+      }
+      if (count > this.lastMaxSubsteps) this.lastMaxSubsteps = count;
       sub.dtRatio = firstRatio;
       if (alone) {
         if (island.beginSingleRigidBodySubsteps(tick, b)) {
@@ -14771,10 +15620,10 @@ function chunkKey(cx, cy, cz) {
   if (cx < -XZ_LIMIT || cx >= XZ_LIMIT || cz < -XZ_LIMIT || cz >= XZ_LIMIT || cy < -Y_LIMIT || cy >= Y_LIMIT) return -1;
   return ((cx + XZ_LIMIT) * XZ_RANGE + (cz + XZ_LIMIT)) * Y_RANGE + (cy + Y_LIMIT);
 }
-function chunkOrigin(key, out) {
-  const rest = Math.floor(key / Y_RANGE);
+function chunkOrigin(key2, out) {
+  const rest = Math.floor(key2 / Y_RANGE);
   out[0] = (Math.floor(rest / XZ_RANGE) - XZ_LIMIT) * CHUNK_SIZE;
-  out[1] = (key % Y_RANGE - Y_LIMIT) * CHUNK_SIZE;
+  out[1] = (key2 % Y_RANGE - Y_LIMIT) * CHUNK_SIZE;
   out[2] = (rest % XZ_RANGE - XZ_LIMIT) * CHUNK_SIZE;
 }
 var localAabb = new Aabb();
@@ -14992,11 +15841,11 @@ function enumerate(shadow, out) {
     const cy0 = Math.max(-Y_LIMIT, Math.floor(members[i + 1] / CHUNK_SIZE)), cy1 = Math.min(Y_LIMIT - 1, Math.floor(members[i + 4] / CHUNK_SIZE));
     const cz0 = Math.max(-XZ_LIMIT, Math.floor(members[i + 2] / CHUNK_SIZE)), cz1 = Math.min(XZ_LIMIT - 1, Math.floor(members[i + 5] / CHUNK_SIZE));
     for (let cy = cy0; cy <= cy1; cy++) for (let cz = cz0; cz <= cz1; cz++) for (let cx = cx0; cx <= cx1; cx++) {
-      const key = chunkKey(cx, cy, cz);
-      if (seen.has(key)) continue;
-      seen.add(key);
+      const key2 = chunkKey(cx, cy, cz);
+      if (seen.has(key2)) continue;
+      seen.add(key2);
       if (shadow && !retained(cx * CHUNK_SIZE, cy * CHUNK_SIZE, cz * CHUNK_SIZE)) continue;
-      out.push(key);
+      out.push(key2);
     }
   }
 }
@@ -15181,22 +16030,22 @@ var VoxelCollider = class {
     const span = (cx1 - cx0 + 1) * (cy1 - cy0 + 1) * (cz1 - cz0 + 1);
     if (span > this.chunks.size + this.refs.size) {
       keyScratch.length = 0;
-      for (const key of this.chunks.keys()) keyScratch.push(key);
+      for (const key2 of this.chunks.keys()) keyScratch.push(key2);
       if (!cachedOnly) {
-        for (const key of this.refs.keys()) if (!this.chunks.has(key)) keyScratch.push(key);
+        for (const key2 of this.refs.keys()) if (!this.chunks.has(key2)) keyScratch.push(key2);
       }
       for (let i = 0; i < keyScratch.length; i++) {
-        const key = keyScratch[i];
-        chunkOrigin(key, origin);
+        const key2 = keyScratch[i];
+        chunkOrigin(key2, origin);
         const cx = origin[0] / CHUNK_SIZE, cy = origin[1] / CHUNK_SIZE, cz = origin[2] / CHUNK_SIZE;
-        if (cx >= cx0 && cx <= cx1 && cy >= cy0 && cy <= cy1 && cz >= cz0 && cz <= cz1) this.invalidate(key, x0, y0, z0, x1, y1, z1);
+        if (cx >= cx0 && cx <= cx1 && cy >= cy0 && cy <= cy1 && cz >= cz0 && cz <= cz1) this.invalidate(key2, x0, y0, z0, x1, y1, z1);
       }
       return;
     }
     for (let cy = cy0; cy <= cy1; cy++) for (let cz = cz0; cz <= cz1; cz++) for (let cx = cx0; cx <= cx1; cx++) {
-      const key = chunkKey(cx, cy, cz);
-      if (key < 0 || cachedOnly && !this.chunks.has(key)) continue;
-      this.invalidate(key, x0, y0, z0, x1, y1, z1);
+      const key2 = chunkKey(cx, cy, cz);
+      if (key2 < 0 || cachedOnly && !this.chunks.has(key2)) continue;
+      this.invalidate(key2, x0, y0, z0, x1, y1, z1);
     }
   }
   /**
@@ -15204,6 +16053,7 @@ var VoxelCollider = class {
    * 在 world.step 前调用；dt 为下一步的时长，单位为秒。
    */
   update(dt = TICK) {
+    this.world.wakeContacts(dt);
     this.updateCount++;
     if (this.updateCount - this.lastPrune >= PRUNE_INTERVAL) {
       this.prune();
@@ -15457,51 +16307,51 @@ var VoxelCollider = class {
     s.keySet = keySet;
     s.active = active;
   }
-  addRef(key) {
-    const n = this.refs.get(key) ?? 0;
-    this.refs.set(key, n + 1);
-    if (n === 0) this.enqueue(key, false);
+  addRef(key2) {
+    const n = this.refs.get(key2) ?? 0;
+    this.refs.set(key2, n + 1);
+    if (n === 0) this.enqueue(key2, false);
   }
-  releaseRef(key) {
-    const n = this.refs.get(key) ?? 0;
+  releaseRef(key2) {
+    const n = this.refs.get(key2) ?? 0;
     if (n > 1) {
-      this.refs.set(key, n - 1);
+      this.refs.set(key2, n - 1);
       return;
     }
-    this.refs.delete(key);
-    this.high.delete(key);
-    this.normal.delete(key);
-    const c = this.chunks.get(key);
+    this.refs.delete(key2);
+    this.high.delete(key2);
+    this.normal.delete(key2);
+    const c = this.chunks.get(key2);
     if (c !== void 0) c.lastUsed = this.updateCount;
   }
-  addActive(key) {
-    const n = this.activeRefs.get(key) ?? 0;
-    this.activeRefs.set(key, n + 1);
+  addActive(key2) {
+    const n = this.activeRefs.get(key2) ?? 0;
+    this.activeRefs.set(key2, n + 1);
     if (n > 0) return;
-    const c = this.chunks.get(key);
+    const c = this.chunks.get(key2);
     if (c !== void 0 && c.dirty.size === 0) this.attach(c);
-    else this.enqueue(key, true);
+    else this.enqueue(key2, true);
   }
-  releaseActive(key) {
-    const n = this.activeRefs.get(key) ?? 0;
+  releaseActive(key2) {
+    const n = this.activeRefs.get(key2) ?? 0;
     if (n > 1) {
-      this.activeRefs.set(key, n - 1);
+      this.activeRefs.set(key2, n - 1);
       return;
     }
-    this.activeRefs.delete(key);
-    const c = this.chunks.get(key);
+    this.activeRefs.delete(key2);
+    const c = this.chunks.get(key2);
     if (c !== void 0) this.detach(c);
-    if (this.high.delete(key) && this.refs.has(key)) this.normal.add(key);
+    if (this.high.delete(key2) && this.refs.has(key2)) this.normal.add(key2);
   }
   /** 未缓存或已失效的块入队；高优先请求升级队列，已入队项保留顺序。 */
-  enqueue(key, highPriority) {
-    const c = this.chunks.get(key);
+  enqueue(key2, highPriority) {
+    const c = this.chunks.get(key2);
     if (c !== void 0 && c.dirty.size === 0) return;
     if (highPriority) {
-      this.normal.delete(key);
-      this.high.add(key);
-    } else if (!this.high.has(key)) {
-      this.normal.add(key);
+      this.normal.delete(key2);
+      this.high.add(key2);
+    } else if (!this.high.has(key2)) {
+      this.normal.add(key2);
     }
   }
   /** 释放离开世界或不再动态的刚体请求，并解除其地形等待状态。 */
@@ -15526,13 +16376,13 @@ var VoxelCollider = class {
   processQueue(queue, budget) {
     if (budget <= 0) return 0;
     let built = 0;
-    for (const key of queue) {
-      queue.delete(key);
-      const c = this.chunks.get(key);
+    for (const key2 of queue) {
+      queue.delete(key2);
+      const c = this.chunks.get(key2);
       if (c !== void 0 && c.dirty.size === 0) continue;
       built++;
-      if (!this.scan(key, c)) {
-        queue.add(key);
+      if (!this.scan(key2, c)) {
+        queue.add(key2);
         break;
       }
       if (built >= budget) break;
@@ -15540,9 +16390,9 @@ var VoxelCollider = class {
     return built;
   }
   /** 读一块：没缓存的整块读，缓存了的只重读脏格。读完返回 true */
-  scan(key, old) {
+  scan(key2, old) {
     if (old === void 0) {
-      chunkOrigin(key, origin);
+      chunkOrigin(key2, origin);
       const ox = origin[0], oy = origin[1], oz = origin[2];
       const cells = new Int32Array(CHUNK_CELLS), types = new Int32Array(CHUNK_CELLS), fluids = new Uint8Array(CHUNK_CELLS);
       if (!this.source.readChunk(ox, oy, oz, cells, types, fluids)) return false;
@@ -15560,9 +16410,9 @@ var VoxelCollider = class {
         lastUsed: this.updateCount
       };
       c.body = this.buildBody(c);
-      this.chunks.set(key, c);
+      this.chunks.set(key2, c);
       if (c.fluidCount > 0) this.fluidChunks++;
-      if (this.activeRefs.has(key)) this.attach(c);
+      if (this.activeRefs.has(key2)) this.attach(c);
       return true;
     }
     const indices = dirtyScratch;
@@ -15593,8 +16443,8 @@ var VoxelCollider = class {
       else if (!had && old.fluidCount > 0) this.fluidChunks++;
     }
     if (!solid) {
-      if (this.activeRefs.has(key)) this.attach(old);
-      if (changed.length > 0) this.wakeChanged(key, old, changed);
+      if (this.activeRefs.has(key2)) this.attach(old);
+      if (changed.length > 0) this.wakeChanged(key2, old, changed);
       return true;
     }
     old.cells.set(scratchCells);
@@ -15602,8 +16452,8 @@ var VoxelCollider = class {
     if (wasAttached && old.body !== null) this.world.removeRigidBody(old.body, false);
     old.attached = false;
     old.body = this.buildBody(old);
-    if (this.activeRefs.has(key)) this.attach(old);
-    this.wakeChanged(key, old, changed);
+    if (this.activeRefs.has(key2)) this.attach(old);
+    this.wakeChanged(key2, old, changed);
     return true;
   }
   attach(c) {
@@ -15669,9 +16519,9 @@ var VoxelCollider = class {
     return false;
   }
   /** 静态体重建后，唤醒休眠范围与变化单元相交的请求者；等待地形的刚体保持冻结。 */
-  wakeChanged(key, c, changed) {
+  wakeChanged(key2, c, changed) {
     for (const s of this.states.values()) {
-      if (s.waiting || !s.keySet.has(key) || !s.body.sleeping) continue;
+      if (s.waiting || !s.keySet.has(key2) || !s.body.sleeping) continue;
       if (!bodyBounds(s.body, bounds)) continue;
       const m = this.margin;
       const x0 = Math.floor(bounds[0] - m), y0 = Math.floor(bounds[1] - m), z0 = Math.floor(bounds[2] - m);
@@ -15734,10 +16584,10 @@ var VoxelCollider = class {
       for (let k = 0; k < budget; k++) {
         const x = x0 + cursor % sx, z = z0 + Math.floor(cursor / sx) % sz, y = y0 + Math.floor(cursor / (sx * sz));
         cursor = (cursor + 1) % volume;
-        const key = chunkKey(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE), Math.floor(z / CHUNK_SIZE));
-        if (key !== last) {
-          c = this.chunks.get(key);
-          last = key;
+        const key2 = chunkKey(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE), Math.floor(z / CHUNK_SIZE));
+        if (key2 !== last) {
+          c = this.chunks.get(key2);
+          last = key2;
         }
         if (c === void 0 || c.dirty.size > 0) continue;
         const i = x - c.ox + (z - c.oz) * CHUNK_SIZE + (y - c.oy) * 64;
@@ -15748,29 +16598,29 @@ var VoxelCollider = class {
     }
   }
   /** 标记范围内的已缓存单元失效，并重新排队有引用的块；当前请求优先于预读请求。 */
-  invalidate(key, x0, y0, z0, x1, y1, z1) {
-    const c = this.chunks.get(key);
+  invalidate(key2, x0, y0, z0, x1, y1, z1) {
+    const c = this.chunks.get(key2);
     if (c !== void 0) {
       const ax = Math.max(x0, c.ox), ay = Math.max(y0, c.oy), az = Math.max(z0, c.oz);
       const bx = Math.min(x1, c.ox + 7), by = Math.min(y1, c.oy + 7), bz = Math.min(z1, c.oz + 7);
       for (let y = ay; y <= by; y++) for (let z = az; z <= bz; z++) for (let x = ax; x <= bx; x++) c.dirty.add(x - c.ox + (z - c.oz) * CHUNK_SIZE + (y - c.oy) * 64);
     }
-    this.normal.delete(key);
-    if (!this.refs.has(key)) return;
+    this.normal.delete(key2);
+    if (!this.refs.has(key2)) return;
     let current = false;
-    for (const s of this.states.values()) if (s.keySet.has(key)) {
+    for (const s of this.states.values()) if (s.keySet.has(key2)) {
       current = true;
       break;
     }
-    this.enqueue(key, current);
+    this.enqueue(key2, current);
   }
   /** 删掉没有引用、unloadDelay 个 update 没用过的块 */
   prune() {
-    for (const [key, c] of this.chunks) {
-      if (this.refs.has(key) || this.updateCount - c.lastUsed <= this.unloadDelay) continue;
+    for (const [key2, c] of this.chunks) {
+      if (this.refs.has(key2) || this.updateCount - c.lastUsed <= this.unloadDelay) continue;
       this.detach(c);
       if (c.fluidCount > 0) this.fluidChunks--;
-      this.chunks.delete(key);
+      this.chunks.delete(key2);
       if (this.lastChunk === c) this.lastChunk = null;
     }
   }
@@ -16775,12 +17625,12 @@ var BlockResolver = class {
       return this.builtin(typeId, getStates2(), context);
     }
     const states = getStates2();
-    const key = `${typeId}|${JSON.stringify(states)}`;
-    const cached = this.custom.get(key);
+    const key2 = `${typeId}|${JSON.stringify(states)}`;
+    const cached = this.custom.get(key2);
     if (cached !== void 0) return cached === null ? this.builtin(typeId, states, context) : cached;
     const boxes = this.collision({ typeId, states });
     const id = boxes === void 0 ? null : this.pack(this.shapeFromBoxes(boxes.map((b) => [b.min.x, b.min.y, b.min.z, b.max.x, b.max.y, b.max.z])), typeId);
-    this.custom.set(key, id);
+    this.custom.set(key2, id);
     return id === null ? this.builtin(typeId, states, context) : id;
   }
   builtin(typeId, states, context) {
@@ -16802,13 +17652,13 @@ var BlockResolver = class {
   /** 用户给出的盒子 → 形状编号。相同的盒子共用一个编号 */
   shapeFromBoxes(boxes) {
     if (boxes.length === 0) return SHAPE_NONE;
-    const key = boxes.map((b) => b.join()).join(";");
-    if (key === FULL_CUBE_BOX) return SHAPE_FULL_CUBE;
-    const known = this.customShapes.get(key);
+    const key2 = boxes.map((b) => b.join()).join(";");
+    if (key2 === FULL_CUBE_BOX) return SHAPE_FULL_CUBE;
+    const known = this.customShapes.get(key2);
     if (known !== void 0) return known;
     const id = this.nextShapeId++;
     this.table.register(id, boxes);
-    this.customShapes.set(key, id);
+    this.customShapes.set(key2, id);
     return id;
   }
 };
@@ -17280,10 +18130,10 @@ var ExplosionQueue = class {
   }
   queue(center, radius) {
     if (!Number.isFinite(center.x) || !Number.isFinite(center.y) || !Number.isFinite(center.z) || !(radius > 0) || !Number.isFinite(radius)) return;
-    const key = `${Math.round(center.x * 4)},${Math.round(center.y * 4)},${Math.round(center.z * 4)}|${Math.round(radius * 2)}`;
-    const e = this.pending.get(key);
+    const key2 = `${Math.round(center.x * 4)},${Math.round(center.y * 4)},${Math.round(center.z * 4)}|${Math.round(radius * 2)}`;
+    const e = this.pending.get(key2);
     if (e === void 0) {
-      this.pending.set(key, { center: { x: center.x, y: center.y, z: center.z }, radius, count: 1 });
+      this.pending.set(key2, { center: { x: center.x, y: center.y, z: center.z }, radius, count: 1 });
       return;
     }
     const n = e.count + 1;
@@ -17638,6 +18488,76 @@ function createAfterEvents() {
   };
 }
 
+// src/mc/compound-boxes.ts
+var key = (x, y, z) => `${x},${y},${z}`;
+function mergeBlockShapes(shapes) {
+  if (shapes.length < 2) return shapes;
+  const groups2 = /* @__PURE__ */ new Map();
+  for (const shape of shapes) {
+    const info = shape.userData;
+    const g = shape.geom, t = shape.localTransform;
+    if (!info || info.physics.fragileImpactSpeed !== void 0 || info.physics.floatingMaterial !== void 0 || !(g instanceof BoxGeometry) || g.hx !== 0.5 || g.hy !== 0.5 || g.hz !== 0.5 || t.r00 !== 1 || t.r11 !== 1 || t.r22 !== 1 || t.r01 !== 0 || t.r02 !== 0 || t.r10 !== 0 || t.r12 !== 0 || t.r20 !== 0 || t.r21 !== 0) continue;
+    const { x, y, z } = info.block.location;
+    if (!Number.isSafeInteger(x) || !Number.isSafeInteger(y) || !Number.isSafeInteger(z)) continue;
+    const groupKey = `${shape.density},${shape.friction},${shape.restitution},${shape.collisionGroup},${shape.collisionMask}:${(t.px - x).toFixed(9)},${(t.py - y).toFixed(9)},${(t.pz - z).toFixed(9)}`;
+    let group = groups2.get(groupKey);
+    if (!group) {
+      group = /* @__PURE__ */ new Map();
+      groups2.set(groupKey, group);
+    }
+    const cellKey = key(x, y, z);
+    if (group.has(cellKey)) continue;
+    group.set(cellKey, { x, y, z, shape });
+  }
+  const replaced = /* @__PURE__ */ new Map();
+  for (const group of groups2.values()) {
+    if (group.size < 2) continue;
+    const cells = [...group.values()].sort((a, b) => a.y - b.y || a.z - b.z || a.x - b.x);
+    for (const cell2 of cells) {
+      const { x, y, z, shape } = cell2;
+      if (!group.has(key(x, y, z))) continue;
+      let nx = 1, nz = 1, ny = 1;
+      while (group.has(key(x + nx, y, z))) nx++;
+      zScan: for (; ; ) {
+        for (let dx = 0; dx < nx; dx++) if (!group.has(key(x + dx, y, z + nz))) break zScan;
+        nz++;
+      }
+      yScan: for (; ; ) {
+        for (let dz = 0; dz < nz; dz++) for (let dx = 0; dx < nx; dx++) if (!group.has(key(x + dx, y + ny, z + dz))) break yScan;
+        ny++;
+      }
+      if (nx * ny * nz === 1) {
+        group.delete(key(x, y, z));
+        continue;
+      }
+      const config = new ShapeConfig(new BoxGeometry(nx / 2, ny / 2, nz / 2));
+      config.transform.copyFrom(shape.localTransform);
+      config.transform.px += (nx - 1) / 2;
+      config.transform.py += (ny - 1) / 2;
+      config.transform.pz += (nz - 1) / 2;
+      config.density = shape.density;
+      config.friction = shape.friction;
+      config.restitution = shape.restitution;
+      config.collisionGroup = shape.collisionGroup;
+      config.collisionMask = shape.collisionMask;
+      for (let dy = 0; dy < ny; dy++) for (let dz = 0; dz < nz; dz++) for (let dx = 0; dx < nx; dx++) {
+        const k = key(x + dx, y + dy, z + dz);
+        replaced.set(group.get(k).shape, null);
+        group.delete(k);
+      }
+      replaced.set(shape, new Shape(config));
+    }
+  }
+  if (replaced.size === 0) return shapes;
+  const result = [];
+  for (const shape of shapes) {
+    const replacement = replaced.get(shape);
+    if (replacement === null) continue;
+    result.push(replacement ?? shape);
+  }
+  return result;
+}
+
 // src/mc/snapshot.ts
 function copyJson(value, depth = 0, seen2 = /* @__PURE__ */ new Set()) {
   if (depth > 64) throw new Error("\u5B58\u6863\u6570\u636E\u5D4C\u5957\u8D85\u8FC7 64 \u5C42");
@@ -17702,7 +18622,11 @@ var SnapshotShapeCache = class {
 function captureBody(body, options, cache2) {
   const c = body.core;
   const shapes = [];
-  for (let s = c.shapeList; s !== null; s = s.next) shapes.push(cache2 ? cache2.capture(s) : shapeSnapshot(s));
+  if (body.snapshotShapes) {
+    for (const s of body.snapshotShapes) shapes.push(cache2 ? cache2.capture(s) : shapeSnapshot(s));
+  } else {
+    for (let s = c.shapeList; s !== null; s = s.next) shapes.push(cache2 ? cache2.capture(s) : shapeSnapshot(s));
+  }
   const out = {
     options: {
       type: body.type,
@@ -18075,6 +18999,7 @@ var PhysicsWorld = class _PhysicsWorld {
     /** 带易碎方块的刚体（见 onBeginContact） */
     this.fragileBodies = /* @__PURE__ */ new Set();
     this.pendingBreaks = /* @__PURE__ */ new Set();
+    this.brokenShapes = /* @__PURE__ */ new Set();
     this.runId = -1;
     /** checkChunks 轮到第几个刚体 */
     this.chunkCursor = 0;
@@ -18112,10 +19037,15 @@ var PhysicsWorld = class _PhysicsWorld {
     this.activeSubsteps = substeps;
     this.core.numVelocityIterations = SOLVER_VELOCITY_ITERATIONS;
     this.core.softContacts = true;
-    this.core.softIterations = 1;
-    this.core.softRelaxIterations = 1;
+    this.core.softIterations = 5;
+    this.core.softRelaxIterations = 5;
+    this.core.softImpactIterations = 10;
+    this.core.softDampingRatio = 7;
+    this.core.softTolerance = 1e-4;
+    this.core.softAdaptiveIterations = true;
     this.core.softSubsteps = substeps;
-    this.core.softContactSkin = -0.01;
+    this.core.pairSpeculativeSpeed = Infinity;
+    this.core.softContactSkin = 0;
     this.core.contactManager.maxRestitution = true;
     this.core.contactManager.listener = this.contactListener;
     this.registry = options.blocks === void 0 ? null : new BlockRegistry(options.blocks);
@@ -18180,8 +19110,10 @@ var PhysicsWorld = class _PhysicsWorld {
    * 生成独立的刚体和关节快照，默认省略 userData。
    *
    * @remarks
-   * 不包含地形缓存、事件订阅和求解缓存。冻结状态保留速度，恢复时重新请求地形。
-   * 世界动态属性存储见 {@link PhysicsWorldStore}。
+   *
+   * - 不包含地形缓存、事件订阅和求解缓存。
+   * - 冻结状态保留速度，恢复时重新请求地形。
+   * - 世界动态属性存储见 {@link PhysicsWorldStore}。
    *
    * @param options
    * 用 `encodeUserData` 把每个刚体的 userData 转成可存的 JSON 值；省略时不保存 userData。
@@ -18234,12 +19166,18 @@ var PhysicsWorld = class _PhysicsWorld {
    * 校验快照并恢复为新世界。
    *
    * @remarks
-   * 失败时释放新建资源。地形重新读取，原休眠刚体在确认支撑后可再次休眠。
-   * 事件订阅不包含在快照中。
+   *
+   * - 失败时释放新建资源。
+   * - 地形重新读取，原休眠刚体在确认支撑后可再次休眠。
+   * - 事件订阅不包含在快照中。
    *
    * @param dimension 恢复到的维度，必须与保存时相同。
    * @param input {@link PhysicsWorld.createSnapshot} 的结果或经过 JSON 往返后的对象。
-   * @param options 覆盖已保存的世界设置。原世界使用 terrain.collision 时须重新提供；decodeUserData 用于恢复自定义数据。
+   * @param options 覆盖已保存的世界设置。
+   *
+   * - 原世界使用 `terrain.collision` 时须重新提供。
+   * - `decodeUserData` 用于恢复自定义数据。
+   *
    * @returns 新的物理世界，推进方式与保存时一致。
    * @throws 快照格式或版本无效、数据损坏、维度不符或缺少 terrain.collision 时抛出错误。
    */
@@ -18406,7 +19344,7 @@ var PhysicsWorld = class _PhysicsWorld {
    * @param deltaTime
    * 推进的时间，单位为秒，必须大于 `0`，由各个子步平均分摊。默认值为 `1 / 20`，即一个 tick。
    * @returns
-   * 这次推进的子步数。负载太高时，该值小于 {@link PhysicsWorld.substeps}，规则见 {@link PhysicsWorldOptions.substeps}。
+   * 这次推进中各活动组合使用的最大子步数。预算规则见 {@link PhysicsWorldOptions.substeps}。
    * @throws
    * `deltaTime` 不合法时；推进完成后有事件回调抛出错误时，抛出第一个错误（见 {@link Signal}）。
    *
@@ -18418,16 +19356,18 @@ var PhysicsWorld = class _PhysicsWorld {
     if (!(deltaTime > 0) || !Number.isFinite(deltaTime)) throw new Error(`deltaTime \u5FC5\u987B\u662F\u5927\u4E8E\u96F6\u7684\u6709\u9650\u6570\uFF0C\u6536\u5230 ${deltaTime}`);
     const start = now();
     this.tickCount++;
+    this.brokenShapes.clear();
     if (this.occlusion !== null && this.explosionQueue.size > 0) this.applyExplosions(this.occlusion);
     if (this.collider !== null && this.freezeOnUnloaded) this.checkChunks(this.collider);
     this.collider?.update(deltaTime);
     const solveStart = this.collider === null ? start : now();
     if (this.floatingBodies.size > 0) this.applyFloating();
     if (this.fluids !== null) this.applyFluids(this.fluids, this.collider, deltaTime);
-    const done = this.activeSubsteps;
     for (const b of this.bodySet) b.recordPrevious();
-    this.core.softSubsteps = done;
+    this.core.softSubsteps = this.activeSubsteps;
+    this.core.softSupportSubsteps = Math.min(this.substepCount, DEFAULT_SUBSTEPS);
     this.core.step(deltaTime);
+    const done = this.core.lastMaxSubsteps;
     if (this.core.numIslands > 0) this.revisionValue++;
     this.totalSteps += done;
     this.detectBreaks();
@@ -18680,8 +19620,10 @@ var PhysicsWorld = class _PhysicsWorld {
    * @param options 刚体选项。
    * @returns 新创建的刚体。
    * @throws 选项无效时抛出错误，创建过程不保留部分结果。
-   * 形状列表须非空，类型、尺寸、密度及 block 数据须有效；位置、速度和 gravityScale 须为有限数，阻尼须非负。
-   * 形状错误包含该形状在 shapes 中的下标。
+   *
+   * - 形状列表须非空，类型、尺寸、密度及 `block` 数据须有效。
+   * - 位置、速度和 `gravityScale` 须为有限数，阻尼须非负。
+   * - 形状错误包含该形状在 `shapes` 中的下标。
    *
    * @example drop-a-crate.ts
    * {@includeCode ../../examples/getting-started/drop-a-crate.ts}
@@ -18745,7 +19687,6 @@ var PhysicsWorld = class _PhysicsWorld {
       }
     });
     const core = new RigidBody(config);
-    core.addShapes(shapes);
     let floatingBlocks = null;
     let fragile = false;
     for (let i = 0; i < shapes.length; i++) {
@@ -18757,10 +19698,10 @@ var PhysicsWorld = class _PhysicsWorld {
       shapes[i].userData = { block, physics, index: i };
       if (physics.fragileImpactSpeed !== void 0) fragile = true;
       if (physics.floatingMaterial === void 0) continue;
-      const s = shapes[i], t2 = s.localTransform, v = s.geom.volume, key = `${block.location.x},${block.location.y},${block.location.z}`;
+      const s = shapes[i], t2 = s.localTransform, v = s.geom.volume, key2 = `${block.location.x},${block.location.y},${block.location.z}`;
       floatingBlocks ?? (floatingBlocks = /* @__PURE__ */ new Map());
-      const e = floatingBlocks.get(key);
-      if (e === void 0) floatingBlocks.set(key, { x: t2.px * v, y: t2.py * v, z: t2.pz * v, w: v, physics });
+      const e = floatingBlocks.get(key2);
+      if (e === void 0) floatingBlocks.set(key2, { x: t2.px * v, y: t2.py * v, z: t2.pz * v, w: v, physics });
       else {
         e.x += t2.px * v;
         e.y += t2.py * v;
@@ -18778,7 +19719,10 @@ var PhysicsWorld = class _PhysicsWorld {
       if (!Number.isFinite(options.gravityScale)) throw new Error(`gravityScale \u5FC5\u987B\u662F\u6709\u9650\u7684\u6570\uFF0C\u6536\u5230 ${options.gravityScale}`);
       core.gravityScale = options.gravityScale;
     }
+    const runtimeShapes = mergeBlockShapes(shapes);
+    core.addShapes(runtimeShapes);
     const body = new Body(this, core, options.userData);
+    if (runtimeShapes !== shapes) body.snapshotShapes = shapes;
     body.recordPrevious();
     this.core.addRigidBody(core);
     this.bodySet.add(body);
@@ -19071,8 +20015,9 @@ var PhysicsWorld = class _PhysicsWorld {
    * 使指定范围的地形碰撞缓存失效。
    *
    * @remarks
-   * 范围自动外扩 1 格，覆盖邻接形状的变化；未缓存区域在后续读取时获取当前数据。
-   * 未启用地形时无效果。
+   *
+   * - 范围自动外扩 1 格，覆盖邻接形状的变化；未缓存区域在后续读取时获取当前数据。
+   * - 未启用地形时无效果。
    *
    * @param min
    * 范围的最小方块坐标。
@@ -19099,7 +20044,10 @@ var PhysicsWorld = class _PhysicsWorld {
    * 销毁物理世界。
    *
    * @remarks
-   * 停止自动推进，移除所有刚体和关节，并取消所有事件订阅。世界及其创建的所有对象随即失效。重复调用没有额外效果。
+   *
+   * - 停止自动推进，移除所有刚体和关节，并取消所有事件订阅。
+   * - 世界及其创建的所有对象随即失效。
+   * - 重复调用没有额外效果。
    */
   destroy() {
     if (!this.validFlag) return;
@@ -19123,6 +20071,7 @@ var PhysicsWorld = class _PhysicsWorld {
     this.floatingBodies.clear();
     this.fragileBodies.clear();
     this.pendingBreaks.clear();
+    this.brokenShapes.clear();
     this.collider?.dispose();
     for (const signal of Object.values(this.events)) signal.clear();
     this.pending = [];
@@ -19213,10 +20162,13 @@ var PhysicsWorld = class _PhysicsWorld {
     for (let side = 0; side < 2; side++) {
       const body2 = side === 0 ? b1 : b2;
       if (body2 === void 0 || !this.fragileBodies.has(body2)) continue;
-      const info = (side === 0 ? c.s1 : c.s2).userData;
+      const shape = side === 0 ? c.s1 : c.s2;
+      const info = shape.userData;
       const threshold = info?.physics.fragileImpactSpeed;
       if (threshold === void 0 || speed < threshold) continue;
       if (!signal.hasSubscribers) continue;
+      if (this.brokenShapes.has(shape)) continue;
+      this.brokenShapes.add(shape);
       const l = info.block.location;
       const event = { body: body2, blockLocation: { x: l.x, y: l.y, z: l.z }, typeId: info.block.typeId, shapeIndex: info.index, impactSpeed: speed };
       this.pending.push(() => signal.emit(event));
@@ -19242,24 +20194,24 @@ var PhysicsWorld = class _PhysicsWorld {
       if (block === void 0 || block.isAir || block.isLiquid) continue;
       const threshold = this.blockPhysics(block.typeId, getStates(block)).fragileImpactSpeed;
       if (threshold === void 0 || speed < threshold) continue;
-      const key = `${x},${y},${z}`;
-      if (this.pendingBreaks.has(key)) return;
-      this.pendingBreaks.add(key);
+      const key2 = `${x},${y},${z}`;
+      if (this.pendingBreaks.has(key2)) return;
+      this.pendingBreaks.add(key2);
       const typeId = block.typeId;
       if (signal.hasSubscribers) {
         const event = { body, blockLocation: { x, y, z }, typeId, impactSpeed: speed };
         this.pending.push(() => signal.emit(event));
       }
-      if (this.breakFragile) this.queueBreak(x, y, z, typeId, key);
-      else this.pendingBreaks.delete(key);
+      if (this.breakFragile) this.queueBreak(x, y, z, typeId, key2);
+      else this.pendingBreaks.delete(key2);
       return;
     }
   }
   /** 下一 tick 破坏仍为原类型的方块，并生成掉落物。 */
-  queueBreak(x, y, z, typeId, key) {
+  queueBreak(x, y, z, typeId, key2) {
     const dimension = this.dimension;
     system2.run(() => {
-      this.pendingBreaks.delete(key);
+      this.pendingBreaks.delete(key2);
       if (!this.validFlag) return;
       let block;
       try {
@@ -19572,17 +20524,22 @@ function splitIntoChunks(value, size) {
 // src/mc/persistence.ts
 var owners = /* @__PURE__ */ new WeakMap();
 var PhysicsWorldStore = class {
-  constructor(key, target = world4) {
-    this.key = key;
+  constructor(key2, target = world4) {
+    this.key = key2;
     this.target = target;
     this.shapeCache = new SnapshotShapeCache();
-    if (!/^[A-Za-z0-9_.:-]{1,80}$/.test(key)) throw new Error("\u5B58\u6863\u540D\u9700\u4E3A 1\uFF5E80 \u4E2A\u5B57\u6BCD\u3001\u6570\u5B57\u3001\u4E0B\u5212\u7EBF\u3001\u70B9\u3001\u5192\u53F7\u6216\u6A2A\u7EBF");
-    this.prefix = `cutlass:store:${key.length}:${key}:`;
+    if (!/^[A-Za-z0-9_.:-]{1,80}$/.test(key2)) throw new Error("\u5B58\u6863\u540D\u9700\u4E3A 1\uFF5E80 \u4E2A\u5B57\u6BCD\u3001\u6570\u5B57\u3001\u4E0B\u5212\u7EBF\u3001\u70B9\u3001\u5192\u53F7\u6216\u6A2A\u7EBF");
+    this.prefix = `cutlass:store:${key2.length}:${key2}:`;
     this.store = new JsonPropertyStore(this.prefix, void 0, target);
   }
   /**
-   * 读取并校验。没有存档，或者记录缺片、JSON 损坏时返回 undefined（open 会建空世界，下次保存覆盖它）。
-   * 解析出来的记录是未知格式、版本或内容不合法时抛错，保存也不会覆盖它。每次都重新读所有分片。
+   * 读取并校验存档。
+   *
+   * @remarks
+   *
+   * - 没有存档、记录缺片或 JSON 损坏时返回 `undefined`；`open` 会创建空世界，下次保存覆盖原记录。
+   * - 记录格式、版本未知或内容不合法时抛出错误，保存不会覆盖原记录。
+   * - 每次读取所有分片。
    */
   read() {
     const value = this.store.load();
@@ -19594,14 +20551,26 @@ var PhysicsWorldStore = class {
     this.dimension = snapshot.dimensionId;
     return snapshot;
   }
-  /** 保存完整快照；内容相同时返回 false 并跳过写入。有活动会话时仅允许会话保存。 */
+  /**
+   * 保存完整快照。
+   *
+   * @remarks
+   *
+   * - 内容相同时返回 `false` 并跳过写入。
+   * - 有活动会话时仅允许会话保存。
+   */
   write(snapshot) {
     this.checkOwner(void 0);
     return this.commit(readSnapshot(snapshot), false);
   }
   /**
-   * 捕获并保存当前状态，内容相同时跳过写入。
-   * 写入前校验已有记录的维度和版本；有活动会话时仅允许会话保存。
+   * 捕获并保存当前状态。
+   *
+   * @remarks
+   *
+   * - 内容相同时跳过写入。
+   * - 写入前校验已有记录的维度和版本。
+   * - 有活动会话时仅允许会话保存。
    */
   save(physics, options = {}) {
     return this.saveAs(void 0, physics, options);
@@ -19628,15 +20597,27 @@ var PhysicsWorldStore = class {
     this.dimension = snapshot.dimensionId;
     return changed;
   }
-  /** 删除活动记录后清理分片。清理失败可重试；有活动会话时抛错。 */
+  /**
+   * 删除活动记录后清理分片。
+   *
+   * @remarks
+   *
+   * - 清理失败后可重新调用。
+   * - 有活动会话时抛出错误。
+   */
   delete() {
     if (owners.get(this.target)?.has(this.key)) throw new Error("\u8BF7\u5148\u5173\u95ED\u6B64\u5B58\u6863\u7684\u6301\u4E45\u5316\u4F1A\u8BDD");
     this.store.clear();
     for (const id of this.target.getDynamicPropertyIds()) if (id.startsWith(this.prefix)) this.target.setDynamicProperty(id, void 0);
   }
   /**
-   * 打开持久化世界，默认加载已有记录并每 100 tick 自动保存。
-   * 同一后端及存档名仅允许一个活动会话；自动保存默认包含正常退出保存。
+   * 打开持久化世界。
+   *
+   * @remarks
+   *
+   * - 默认加载已有记录，并每 100 tick 自动保存。
+   * - 同一后端及存档名仅允许一个活动会话。
+   * - 自动保存默认包含正常退出保存。
    */
   open(dimension, options = {}) {
     let active = owners.get(this.target);
@@ -19745,8 +20726,13 @@ var PersistentPhysicsWorld = class {
     return next;
   }
   /**
-   * 保存后停止定时器并销毁世界；保存失败时保留会话。
-   * save=false 放弃未保存变更。退出回调中的退订失败不影响其余清理。
+   * 保存后停止定时器并销毁世界。
+   *
+   * @remarks
+   *
+   * - 保存失败时保留会话。
+   * - `save=false` 放弃未保存变更。
+   * - 退出回调中的退订失败不影响其余清理。
    */
   close(save = true) {
     if (this.closed) return;
@@ -19765,6 +20751,7 @@ var PersistentPhysicsWorld = class {
 };
 export {
   Body,
+  Drag,
   Joint2 as Joint,
   PersistentPhysicsWorld,
   PhysicsWorld,

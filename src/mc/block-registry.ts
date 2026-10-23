@@ -21,43 +21,52 @@ export interface BlockProperties {
    * 轴对齐碰撞盒。
    *
    * @remarks
-   * 坐标相对于方块最小角，单位为格；x 向东、y 向上、z 向南。空数组表示无碰撞。
-   * 每个盒子必须有体积，坐标范围为 [-1, 2]。同时影响地形和 {@link blockShapes}。
-   * 省略时使用内置数据；未知方块按 {@link TerrainOptions.unknownBlock} 处理。
+   *
+   * - 坐标相对于方块最小角，单位为格；x 向东、y 向上、z 向南。
+   * - 每个盒子必须有体积，坐标范围为 `[-1, 2]`。空数组表示无碰撞。
+   * - 同时影响地形和 {@link blockShapes}。
+   * - 省略时使用内置数据；未知方块按 {@link TerrainOptions.unknownBlock} 处理。
    */
   collision?: BlockCollision;
   /**
    * 单个方块的质量。
    *
    * @remarks
-   * 仅影响 {@link blockShapes}，与碰撞盒体积无关。必须为非负有限数，0 表示不生成形状。
-   * 省略时使用内置值，未知方块默认为 1。
+   *
+   * - 仅影响 {@link blockShapes}，与碰撞盒体积无关。
+   * - 必须为非负有限数，`0` 表示不生成形状。
+   * - 省略时使用内置值，未知方块默认为 `1`。
    */
   mass?: number;
   /**
    * 摩擦倍率。
    *
    * @remarks
-   * 普通方块为 `1`，冰为 `0`，蜂蜜块等为 `1.65`。接触时的摩擦 = 基础摩擦 × 双方倍率的乘积，
-   * 基础摩擦在两个刚体之间为 `0.525`，刚体和地形之间为 `0.5125`。同时作用于地形和 {@link blockShapes} 生成的形状。
-   * 必须是不小于 `0` 的有限数。设置了 {@link TerrainOptions.material} 时，地形忽略这一项。
+   *
+   * - 普通方块为 `1`，冰为 `0`，蜂蜜块等为 `1.65`。
+   * - 接触摩擦为基础摩擦与双方倍率的乘积。基础摩擦在两个刚体之间为 `0.525`，刚体和地形之间为 `0.5125`。
+   * - 同时作用于地形和 {@link blockShapes} 生成的形状；设置 {@link TerrainOptions.material} 时，地形忽略此项。
+   * - 必须是不小于 `0` 的有限数。
    */
   friction?: number;
   /**
    * 弹性。
    *
    * @remarks
-   * 接触时取双方较大的值。同时作用于地形和 {@link blockShapes} 生成的形状。必须是不小于 `0` 的有限数。
-   * 设置了 {@link TerrainOptions.material} 时，地形忽略这一项。
+   *
+   * - 接触时取双方较大的值。
+   * - 同时作用于地形和 {@link blockShapes} 生成的形状；设置 {@link TerrainOptions.material} 时，地形忽略此项。
+   * - 必须是不小于 `0` 的有限数。
    */
   restitution?: number;
   /**
    * 易碎速度，单位为格/秒。
    *
    * @remarks
-   * 刚体以不低于这个速度撞上这个方块时触发 {@link PhysicsAfterEvents.blockBreak}，世界里的方块还会被破坏
-   * （见 {@link PhysicsWorldOptions.breakFragileBlocks}）。必须是大于 `0` 的有限数。
-   * 省略时用内置值，没有内置值的方块不易碎。
+   *
+   * - 撞击速度达到此值时触发 {@link PhysicsAfterEvents.blockBreak}；世界方块的破坏规则见 {@link PhysicsWorldOptions.breakFragileBlocks}。
+   * - 必须是大于 `0` 的有限数。
+   * - 省略时使用内置值，没有内置值的方块不易碎。
    */
   fragileImpactSpeed?: number;
 }
@@ -70,8 +79,10 @@ export interface BlockVariant extends BlockProperties {
    * 变体的状态匹配条件。
    *
    * @remarks
-   * 至少包含一个状态，所有列出的状态均须匹配。数组值表示匹配其中任一值，未列出的状态不受限制。
-   * 键和值类型与 block.permutation.getAllStates() 一致，原版状态键兼容 minecraft: 前缀。
+   *
+   * - 至少包含一个状态，所有列出的状态均须匹配。
+   * - 数组值表示匹配其中任一值，未列出的状态不受限制。
+   * - 键和值类型与 `block.permutation.getAllStates()` 一致，原版状态键兼容 `minecraft:` 前缀。
    */
   when: Readonly<Record<string, BlockStateValue | readonly BlockStateValue[]>>;
 }
@@ -93,8 +104,11 @@ export interface BlockDefinition extends BlockProperties {
  * 方块类型标识符到定义的映射。
  *
  * @remarks
- * 无命名空间的键默认为 minecraft:。已登记字段覆盖内置数据，未登记的方块使用内置数据。
- * 创建世界时校验并复制登记表；非法项抛出错误。登记表随物理存档保存和恢复。
+ *
+ * - 无命名空间的键默认为 `minecraft:`。
+ * - 已登记字段覆盖内置数据，未登记的方块使用内置数据。
+ * - 创建世界时校验并复制登记表；非法项抛出错误。
+ * - 登记表随物理存档保存和恢复。
  *
  * @example block-definitions.ts
  * {@includeCode ../../examples/terrain/block-definitions.ts}

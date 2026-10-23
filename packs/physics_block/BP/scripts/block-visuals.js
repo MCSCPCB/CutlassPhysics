@@ -62,7 +62,7 @@ export function resolveSubLevelBlockRotation(typeIdOrStates, suppliedStates) {
     const stairDirection = firstState(states, ["weirdo_direction", "minecraft:weirdo_direction"]);
     if (stairDirection) {
         const direction = requireIntegerState(stairDirection.value, 0, 3);
-        const yaw = [270, 270, 180, 180][direction];
+        const yaw = [270, 90, 180, 0][direction];
         const upsideDown = firstState(states, ["upside_down_bit", "minecraft:upside_down_bit"]);
         return upsideDown?.value === true
             ? composeRotations({ x: 0, y: yaw, z: 0 }, { x: 0, y: 0, z: 180 })

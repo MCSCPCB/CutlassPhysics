@@ -12,8 +12,10 @@ import type { blockShapes } from "./block-body.js";
  * 可订阅和取消订阅的事件。
  *
  * @remarks
- * 事件在 {@link PhysicsWorld.step} 结束后依次触发，stepEnd 最后触发。回调中的刚体和关节变更在下一步生效。
- * 回调错误不阻断其余事件；派发结束后抛出首个错误，自动推进时记录到 ContentLog。
+ *
+ * - 事件在 {@link PhysicsWorld.step} 结束后依次触发，`stepEnd` 最后触发。
+ * - 回调中的刚体和关节变更在下一步生效。
+ * - 回调错误不阻断其余事件；派发结束后抛出首个错误，自动推进时记录到 ContentLog。
  */
 export interface Signal<T> {
   /**
@@ -168,8 +170,11 @@ export interface JointBreakEvent {
  * 刚体进入水或岩浆时的信息。
  *
  * @remarks
- * 由未浸没变为浸没时触发。溅水点位于平均接触点上方 0.02 格。
- * 岩浆事件仅在离开超过 4 tick 后可再次触发；无订阅者时不收集接触点。
+ *
+ * - 由未浸没变为浸没时触发。
+ * - 溅水点位于平均接触点上方 0.02 格。
+ * - 岩浆事件仅在离开超过 4 tick 后可再次触发。
+ * - 无订阅者时不收集接触点。
  */
 export interface FluidEntryEvent {
   /**
@@ -217,9 +222,10 @@ export interface FluidEntryEvent {
  * 易碎方块被撞碎时的信息。
  *
  * @remarks
- * 撞击速度达到方块的 fragileImpactSpeed 时触发。
- * 世界方块通过 blockLocation 标识；启用 breakFragileBlocks 时在下一 tick 破坏并掉落物品。
- * 刚体方块通过 shapeIndex 标识，事件不移除对应形状。
+ *
+ * - 撞击速度达到方块的 `fragileImpactSpeed` 时触发。
+ * - 世界方块通过 `blockLocation` 标识；启用 `breakFragileBlocks` 时在下一 tick 破坏并掉落物品。
+ * - 刚体方块通过 `shapeIndex` 标识，事件不移除对应形状。
  */
 export interface BlockBreakEvent {
   /**

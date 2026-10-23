@@ -1,12 +1,14 @@
-import { system, world } from "@minecraft/server";
+import { EntitySwingSource, system, world } from "@minecraft/server";
 import { PhysicsWorldStore } from "./physics.js";
 import { Renderer, ENTITY_TYPE } from "./renderer.js";
 import { Structures } from "./structures.js";
 import { DragController, heldItem } from "./drag.js";
+import { pickStructure, hitCell } from "./picking.js";
 
 const sessions = new Map();
 const selections = new Map();
 const lastUse = new Map();
+const lastAttack = new Map();
 const dragging = new DragController();
 const storeFor = id => new PhysicsWorldStore(`physics_block:${id}`);
 
@@ -46,7 +48,6 @@ function use(player, typeId, location) {
     if (session) dragging.toggle(player, session);
     return;
   }
-  location ??= player.getBlockFromViewDirection({ maxDistance: 6, includeLiquidBlocks: false })?.block.location;
   if (!location) return;
   const first = selections.get(player.id);
   if (!first || first.dimensionId !== player.dimension.id) {
@@ -54,16 +55,18 @@ function use(player, typeId, location) {
     player.onScreenDisplay.setActionBar(`起点：${location.x}, ${location.y}, ${location.z}`);
     return;
   }
+  selections.delete(player.id);
   const session = sessionFor(player.dimension);
   const count = session.structures.assemble(first.location, location);
-  selections.delete(player.id);
   save(session);
   player.onScreenDisplay.setActionBar(`已物理化 ${count} 个方块`);
 }
 
 function queueUse(player, typeId, location) {
-  if (system.currentTick - (lastUse.get(player.id) ?? -100) < 7) return;
-  lastUse.set(player.id, system.currentTick);
+  if (typeId === "minecraft:slime_ball") {
+    if (system.currentTick - (lastUse.get(player.id) ?? -100) < 7) return;
+    lastUse.set(player.id, system.currentTick);
+  }
   const dimensionId = player.dimension.id;
   system.run(() => {
     if (!player.isValid || player.dimension.id !== dimensionId) return;
@@ -82,7 +85,7 @@ world.beforeEvents.playerInteractWithBlock.subscribe(event => {
 });
 
 world.beforeEvents.itemUse.subscribe(event => {
-  if (!isTool(event.itemStack.typeId)) return;
+  if (event.itemStack.typeId !== "minecraft:slime_ball") return;
   event.cancel = true;
   queueUse(event.source, event.itemStack.typeId);
 });
@@ -96,7 +99,7 @@ world.beforeEvents.playerInteractWithEntity.subscribe(event => {
 world.beforeEvents.playerBreakBlock.subscribe(event => {
   if (!isTool(event.itemStack?.typeId)) return;
   event.cancel = true;
-  queueUse(event.player, event.itemStack.typeId, { ...event.block.location });
+  if (event.itemStack.typeId === "minecraft:slime_ball") queueUse(event.player, event.itemStack.typeId);
 });
 
 function breakEntity(entity) {
@@ -106,10 +109,29 @@ function breakEntity(entity) {
   }
 }
 
+function attack(player) {
+  if (!player.isValid || lastAttack.get(player.id) === system.currentTick) return;
+  lastAttack.set(player.id, system.currentTick);
+  const item = heldItem(player);
+  if (isTool(item)) {
+    if (item === "minecraft:slime_ball") queueUse(player, item);
+    return;
+  }
+  const session = sessions.get(player.dimension.id);
+  if (!session) return;
+  const hit = pickStructure(player, session);
+  const cell = hit && hitCell(hit);
+  if (cell) session.structures.breakCell(cell.id);
+}
+
+world.afterEvents.playerSwingStart.subscribe(({ player, swingSource }) => {
+  if (swingSource === EntitySwingSource.Attack || swingSource === EntitySwingSource.Mine) attack(player);
+});
+
 world.afterEvents.entityHitEntity.subscribe(({ damagingEntity, hitEntity }) => {
   if (hitEntity.typeId !== ENTITY_TYPE) return;
-  if (damagingEntity.typeId === "minecraft:player" && isTool(heldItem(damagingEntity))) {
-    if (heldItem(damagingEntity) === "minecraft:slime_ball") queueUse(damagingEntity, "minecraft:slime_ball");
+  if (damagingEntity.typeId === "minecraft:player") {
+    attack(damagingEntity);
     return;
   }
   breakEntity(hitEntity);
@@ -121,16 +143,23 @@ world.afterEvents.entityDie.subscribe(({ deadEntity }) => {
   breakEntity(deadEntity);
 });
 
+world.afterEvents.explosion.subscribe(({ dimension }) => {
+  const session = sessions.get(dimension.id);
+  if (session) system.run(() => session.renderer.resetAnchors());
+});
+
 world.afterEvents.playerLeave.subscribe(({ playerId }) => {
   dragging.release(playerId);
   selections.delete(playerId);
   lastUse.delete(playerId);
+  lastAttack.delete(playerId);
 });
 
 world.afterEvents.playerDimensionChange.subscribe(({ player }) => {
   dragging.release(player.id);
   selections.delete(player.id);
   lastUse.delete(player.id);
+  lastAttack.delete(player.id);
 });
 
 world.afterEvents.entityLoad.subscribe(({ entity }) => {

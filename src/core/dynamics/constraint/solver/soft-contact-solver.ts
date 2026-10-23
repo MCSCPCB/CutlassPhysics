@@ -37,6 +37,9 @@ class SoftPoint {
   iaN1X = 0; iaN1Y = 0; iaN1Z = 0; iaN2X = 0; iaN2Y = 0; iaN2Z = 0;
   iaT1X = 0; iaT1Y = 0; iaT1Z = 0; iaT2X = 0; iaT2Y = 0; iaT2Z = 0;
   iaB1X = 0; iaB1Y = 0; iaB1Z = 0; iaB2X = 0; iaB2Y = 0; iaB2Z = 0;
+  /** 单位法向冲量引起的切向相对速度变化。 */
+  couplingT = 0;
+  couplingB = 0;
   massN = 0;
   massT = 0;
   massB = 0;
@@ -73,7 +76,7 @@ export class SoftContactSolver {
   private live2 = true;
   /** 子步模式是否按当前位姿重新计算分离距离。 */
   private substepped = false;
-  /** 这个 tick 碰到了被撞的刚体（见 Island.beginSubsteps）：撞击时第一遍之后只解这些接触 */
+  /** 本 tick 接触到被撞刚体，参与额外迭代。 */
   impacted = false;
 
   constructor(constraint: ContactConstraint) {
@@ -90,8 +93,11 @@ export class SoftContactSolver {
     this.substepped = substepped;
     const c = this.constraint, m = c.manifold, b1 = c.b1!, b2 = c.b2!;
     if (substepDt > 0 && c.substepDt > 0) impulseRatio = substepDt / c.substepDt;
+    // 撞击冲量不作为下一 tick 的持续支撑冲量。
+    if (substepped && this.impacted) impulseRatio = 0;
     c.substepDt = substepDt;
     this.friction = Math.sqrt(c.s1!.friction * c.s2!.friction);
+    if (b1.drag !== null || b2.drag !== null) this.friction *= 0.3;
     this.restitution = c.maxRestitution
       ? Math.max(c.s1!.restitution, c.s2!.restitution)
       : Math.sqrt(c.s1!.restitution * c.s2!.restitution);
@@ -125,10 +131,9 @@ export class SoftContactSolver {
       p.disabled = false;
       // 重置未参与热启动的接触冲量。
       if (!p.warmStarted) p.impulse.clear();
-      // 两个刚体用同一个作用点（两个接触点的中点），一对相反的冲量不会产生净力矩。
-      const mX = (p.p1X + p.p2X) * 0.5, mY = (p.p1Y + p.p2Y) * 0.5, mZ = (p.p1Z + p.p2Z) * 0.5;
-      const r1X = mX - p1X, r1Y = mY - p1Y, r1Z = mZ - p1Z;
-      const r2X = mX - p2X, r2Y = mY - p2Y, r2Z = mZ - p2Z;
+      // 力臂分别取两侧表面的接触点，与局部锚点保持一致。
+      const r1X = p.p1X - p1X, r1Y = p.p1Y - p1Y, r1Z = p.p1Z - p1Z;
+      const r2X = p.p2X - p2X, r2Y = p.p2Y - p2Y, r2Z = p.p2Z - p2Z;
       sp.r1X = r1X; sp.r1Y = r1Y; sp.r1Z = r1Z;
       sp.r2X = r2X; sp.r2Y = r2Y; sp.r2Z = r2Z;
       // 法向：a = r × n，ia = I⁻¹ a，有效质量 1 / (m1⁻¹ + m2⁻¹ + a1·ia1 + a2·ia2)
@@ -145,6 +150,7 @@ export class SoftContactSolver {
       sp.iaT2X = i200 * a2X + i201 * a2Y + i202 * a2Z; sp.iaT2Y = i210 * a2X + i211 * a2Y + i212 * a2Z; sp.iaT2Z = i220 * a2X + i221 * a2Y + i222 * a2Z;
       k = invM1 + invM2 + (a1X * sp.iaT1X + a1Y * sp.iaT1Y + a1Z * sp.iaT1Z) + (a2X * sp.iaT2X + a2Y * sp.iaT2Y + a2Z * sp.iaT2Z);
       sp.massT = k > 0 ? 1 / k : 0;
+      sp.couplingT = (invM1 + invM2) * (tX * nX + tY * nY + tZ * nZ) + a1X * sp.iaN1X + a1Y * sp.iaN1Y + a1Z * sp.iaN1Z + a2X * sp.iaN2X + a2Y * sp.iaN2Y + a2Z * sp.iaN2Z;
       // 副切向
       a1X = r1Y * bZ - r1Z * bY; a1Y = r1Z * bX - r1X * bZ; a1Z = r1X * bY - r1Y * bX;
       a2X = r2Y * bZ - r2Z * bY; a2Y = r2Z * bX - r2X * bZ; a2Z = r2X * bY - r2Y * bX;
@@ -152,6 +158,7 @@ export class SoftContactSolver {
       sp.iaB2X = i200 * a2X + i201 * a2Y + i202 * a2Z; sp.iaB2Y = i210 * a2X + i211 * a2Y + i212 * a2Z; sp.iaB2Z = i220 * a2X + i221 * a2Y + i222 * a2Z;
       k = invM1 + invM2 + (a1X * sp.iaB1X + a1Y * sp.iaB1Y + a1Z * sp.iaB1Z) + (a2X * sp.iaB2X + a2Y * sp.iaB2Y + a2Z * sp.iaB2Z);
       sp.massB = k > 0 ? 1 / k : 0;
+      sp.couplingB = (invM1 + invM2) * (bX * nX + bY * nY + bZ * nZ) + a1X * sp.iaN1X + a1Y * sp.iaN1Y + a1Z * sp.iaN1Z + a2X * sp.iaN2X + a2Y * sp.iaN2Y + a2Z * sp.iaN2Z;
       // 分离距离为 -depth - skin；offset 保持后续按位姿重算的结果一致。
       sp.separation = -p.depth - surface;
       sp.offset = sp.separation - ((p.p1X - p.p2X) * nX + (p.p1Y - p.p2Y) * nY + (p.p1Z - p.p2Z) * nZ);
@@ -203,11 +210,11 @@ export class SoftContactSolver {
   }
 
   /**
-   * 执行一次摩擦和法向求解。
+   * 先求法向支撑，再求摩擦；返回冲量变化的绝对值之和。
    * useBias 启用穿透修正；关闭时仅阻止继续靠近。
    * reuseSeparation 仅在位姿未变时有效，reverse 控制接触点迭代方向。
    */
-  solve(useBias: boolean, reverse: boolean, invH: number, dynamic: Softness, fixed: Softness, maxPushVelocity: number, reuseSeparation = false): void {
+  solve(useBias: boolean, reverse: boolean, invH: number, dynamic: Softness, fixed: Softness, maxPushVelocity: number, reuseSeparation = false): number {
     const c = this.constraint, m = c.manifold, b1 = c.b1!, b2 = c.b2!;
     const invM1 = this.invM1, invM2 = this.invM2, live1 = this.live1, live2 = this.live2;
     const nX = m.nX, nY = m.nY, nZ = m.nZ, tX = m.tX, tY = m.tY, tZ = m.tZ, bX = m.bX, bY = m.bY, bZ = m.bZ;
@@ -242,41 +249,17 @@ export class SoftContactSolver {
     if (live1) { v1X = b1.vx; v1Y = b1.vy; v1Z = b1.vz; w1X = b1.wx; w1Y = b1.wy; w1Z = b1.wz; }
     if (live2) { v2X = b2.vx; v2Y = b2.vy; v2Z = b2.vz; w2X = b2.wx; w2Y = b2.wy; w2Z = b2.wz; }
     const friction = this.friction;
+    let error = 0;
     for (let k = 0; k < n; k++) {
       const sp = this.points[reverse ? n - 1 - k : k];
       const r1X = sp.r1X, r1Y = sp.r1Y, r1Z = sp.r1Z, r2X = sp.r2X, r2Y = sp.r2Y, r2Z = sp.r2Z;
-      // 摩擦：切向、副切向各自按自己的有效质量解，再把合力限制在以当前法向冲量为界的摩擦锥里
-      if (sp.impulseN !== 0 || sp.impulseT !== 0 || sp.impulseB !== 0) {
-        const dvX = v1X + (w1Y * r1Z - w1Z * r1Y) - v2X - (w2Y * r2Z - w2Z * r2Y);
-        const dvY = v1Y + (w1Z * r1X - w1X * r1Z) - v2Y - (w2Z * r2X - w2X * r2Z);
-        const dvZ = v1Z + (w1X * r1Y - w1Y * r1X) - v2Z - (w2X * r2Y - w2Y * r2X);
-        let newT = sp.impulseT - sp.massT * (dvX * tX + dvY * tY + dvZ * tZ);
-        let newB = sp.impulseB - sp.massB * (dvX * bX + dvY * bY + dvZ * bZ);
-        const limit = friction * sp.impulseN;
-        const lenSq = newT * newT + newB * newB;
-        if (lenSq > limit * limit) {
-          const scale = lenSq > 0 ? limit / Math.sqrt(lenSq) : 0;
-          newT *= scale;
-          newB *= scale;
-        }
-        const iT = newT - sp.impulseT, iB = newB - sp.impulseB;
-        sp.impulseT = newT;
-        sp.impulseB = newB;
-        if (iT !== 0 || iB !== 0) {
-          const pX = tX * iT + bX * iB, pY = tY * iT + bY * iB, pZ = tZ * iT + bZ * iB;
-          v1X += invM1 * pX; v1Y += invM1 * pY; v1Z += invM1 * pZ;
-          v2X -= invM2 * pX; v2Y -= invM2 * pY; v2Z -= invM2 * pZ;
-          w1X += sp.iaT1X * iT + sp.iaB1X * iB; w1Y += sp.iaT1Y * iT + sp.iaB1Y * iB; w1Z += sp.iaT1Z * iT + sp.iaB1Z * iB;
-          w2X -= sp.iaT2X * iT + sp.iaB2X * iB; w2Y -= sp.iaT2Y * iT + sp.iaB2Y * iB; w2Z -= sp.iaT2Z * iT + sp.iaB2Z * iB;
-        }
-      }
       const s = sp.currentSeparation;
       let bias = 0, massScale = 1, impulseScale = 0;
       if (s > 0) {
         // 预测接触将本步靠近量限制在剩余间距内。
         bias = s * invH;
-      } else if (useBias && s < -LINEAR_SLOP) {
-        bias = biasRate * (s + LINEAR_SLOP);
+      } else if (useBias && s < -(this.substepped ? 0 : LINEAR_SLOP)) {
+        bias = biasRate * (s + (this.substepped ? 0 : LINEAR_SLOP));
         if (bias < -maxPushVelocity) bias = -maxPushVelocity;
         massScale = softMass;
         impulseScale = softImpulse;
@@ -291,16 +274,42 @@ export class SoftContactSolver {
       const total = sum > 0 ? sum : 0;
       impulse = total - old;
       sp.impulseN = total;
+      // 预测接触可能在后续子步才受力，撞击速度包含该子步的加速。
+      if (this.substepped && impulse > 0 && -vn > c.approachSpeed) c.approachSpeed = -vn;
       if (total > sp.maxImpulseN) sp.maxImpulseN = total;
-      if (impulse !== 0) {
-        v1X += invM1 * nX * impulse; v1Y += invM1 * nY * impulse; v1Z += invM1 * nZ * impulse;
-        v2X -= invM2 * nX * impulse; v2Y -= invM2 * nY * impulse; v2Z -= invM2 * nZ * impulse;
-        w1X += sp.iaN1X * impulse; w1Y += sp.iaN1Y * impulse; w1Z += sp.iaN1Z * impulse;
-        w2X -= sp.iaN2X * impulse; w2Y -= sp.iaN2Y * impulse; w2Z -= sp.iaN2Z * impulse;
+      let iT = 0, iB = 0;
+      // 法向与切向耦合项避免重复计算接触点速度。
+      if (total !== 0 || sp.impulseT !== 0 || sp.impulseB !== 0) {
+        let newT = sp.impulseT - sp.massT * (dvX * tX + dvY * tY + dvZ * tZ + sp.couplingT * impulse);
+        let newB = sp.impulseB - sp.massB * (dvX * bX + dvY * bY + dvZ * bZ + sp.couplingB * impulse);
+        const limit = friction * total, lenSq = newT * newT + newB * newB;
+        if (lenSq > limit * limit) {
+          const scale = limit / Math.sqrt(lenSq);
+          newT *= scale;
+          newB *= scale;
+        }
+        iT = newT - sp.impulseT;
+        iB = newB - sp.impulseB;
+        sp.impulseT = newT;
+        sp.impulseB = newB;
       }
+      error += Math.abs(impulse) + Math.abs(iT) + Math.abs(iB);
+      if (impulse === 0 && iT === 0 && iB === 0) continue;
+      const pX = nX * impulse + tX * iT + bX * iB;
+      const pY = nY * impulse + tY * iT + bY * iB;
+      const pZ = nZ * impulse + tZ * iT + bZ * iB;
+      v1X += invM1 * pX; v1Y += invM1 * pY; v1Z += invM1 * pZ;
+      v2X -= invM2 * pX; v2Y -= invM2 * pY; v2Z -= invM2 * pZ;
+      w1X += sp.iaN1X * impulse + sp.iaT1X * iT + sp.iaB1X * iB;
+      w1Y += sp.iaN1Y * impulse + sp.iaT1Y * iT + sp.iaB1Y * iB;
+      w1Z += sp.iaN1Z * impulse + sp.iaT1Z * iT + sp.iaB1Z * iB;
+      w2X -= sp.iaN2X * impulse + sp.iaT2X * iT + sp.iaB2X * iB;
+      w2Y -= sp.iaN2Y * impulse + sp.iaT2Y * iT + sp.iaB2Y * iB;
+      w2Z -= sp.iaN2Z * impulse + sp.iaT2Z * iT + sp.iaB2Z * iB;
     }
     if (live1) { b1.vx = v1X; b1.vy = v1Y; b1.vz = v1Z; b1.wx = w1X; b1.wy = w1Y; b1.wz = w1Z; }
     if (live2) { b2.vx = v2X; b2.vy = v2Y; b2.vz = v2Z; b2.wx = w2X; b2.wy = w2Y; b2.wz = w2Z; }
+    return error;
   }
 
   /** 有没有要反弹的点（applyRestitution 会处理的点） */

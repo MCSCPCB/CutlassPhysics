@@ -29,7 +29,10 @@ export interface SpringOptions {
    * 是否使用辛欧拉积分。
    *
    * @remarks
-   * 默认值为 `false`。辛欧拉积分的能量守恒更好，但频率较高时会发散。隐式欧拉积分会损失少量能量，但始终稳定。
+   * 默认值为 `false`。
+   *
+   * - `true`：使用辛欧拉积分，能量守恒更好，但频率较高时会发散。
+   * - `false`：使用隐式欧拉积分，会损失少量能量，但始终稳定。
    */
   useSymplecticEuler?: boolean;
 }
@@ -38,8 +41,10 @@ export interface SpringOptions {
  * 描述绕轴转动自由度的限制和马达。角度单位为度。
  *
  * @remarks
- * `lower`、`upper` 都省略时不限制；只给一侧时，另一侧为 `-180` 或 `180`。
- * 数值可以是 `Infinity`（等同于不限制），不能是 `NaN`。
+ *
+ * - `lower`、`upper` 都省略时不限制。
+ * - 只给一侧时，另一侧为 `-180` 或 `180`。
+ * - 数值可以是 `Infinity`（等同于不限制），不能是 `NaN`。
  */
 export interface AngularLimitOptions {
   /**
@@ -74,8 +79,10 @@ export interface AngularLimitOptions {
  * 描述沿轴滑动自由度的限制和马达。长度单位为格。
  *
  * @remarks
- * `lower`、`upper` 都省略时不限制；只给一侧时，另一侧为 `-1e9` 或 `1e9` 格。
- * 数值可以是 `Infinity`（等同于不限制），不能是 `NaN`。
+ *
+ * - `lower`、`upper` 都省略时不限制。
+ * - 只给一侧时，另一侧为 `-1e9` 或 `1e9` 格。
+ * - 数值可以是 `Infinity`（等同于不限制），不能是 `NaN`。
  */
 export interface LinearLimitOptions {
   /**

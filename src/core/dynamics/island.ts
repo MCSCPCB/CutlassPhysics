@@ -5,6 +5,7 @@ import type { Softness, SoftContactSolver } from "./constraint/solver/soft-conta
 import { RigidBodyType } from "./rigidbody/rigid-body-config.js";
 import type { RigidBody } from "./rigidbody/rigid-body.js";
 import type { TimeStep } from "./time-step.js";
+import type { DragConstraint } from "./constraint/drag-constraint.js";
 
 /** 1 / eˣ 的近似，阻尼用 */
 function fastInvExp(x: number): number {
@@ -18,10 +19,12 @@ export class SoftSubstepParams {
   substeps = 1;
   /**
    * 接触带偏置、松弛各解几遍。这个 tick 有接触的靠近速度超过 impactVelocity（m/s）时，两个阶段都解 impactIterations 遍，
-   * 第一遍之后只解碰到被撞刚体的接触
+   * 超出常规遍数的部分仅处理被撞刚体的接触。
    */
   iterations = 1;
   relaxIterations = 1;
+  tolerance = 0;
+  adaptiveIterations = false;
   impactIterations = 0;
   impactVelocity = 0;
   /** 子步结束后的反弹遍数；靠近速度超过 restitutionThreshold（m/s）的接触才反弹 */
@@ -60,23 +63,36 @@ export class Island {
   private gravityY = 0;
   private gravityZ = 0;
   private readonly rigidBodies: RigidBody[] = [];
+  private readonly drags: DragConstraint[] = [];
   private readonly solvers: ConstraintSolver[] = [];
   /** 位置修正用 split impulse、NGS 的约束 */
   private readonly solversSi: ConstraintSolver[] = [];
   private readonly solversNgs: ConstraintSolver[] = [];
   /** 软接触求解器列表；关节求解器保存在 solvers 中。 */
   private readonly softContacts: SoftContactSolver[] = [];
+  private readonly orderedContacts: SoftContactSolver[] = [];
   /** beginSubsteps 计算的带偏置、松弛及速度迭代次数，供 runSubsteps 使用。 */
   private biasPasses = 0;
   private relaxPasses = 0;
   private solveTotal = 0;
+  private conditionedContacts = false;
+  private quietContacts = false;
+  private isotropicContacts = false;
+  private minMass = Infinity;
+  private maxMass = 0;
+  private extendedBody = false;
 
   clear(): void {
     this.rigidBodies.length = 0;
+    this.drags.length = 0;
     this.solvers.length = 0;
     this.solversSi.length = 0;
     this.solversNgs.length = 0;
     this.softContacts.length = 0;
+    this.orderedContacts.length = 0;
+    this.minMass = Infinity;
+    this.maxMass = 0;
+    this.extendedBody = false;
   }
 
   setGravity(x: number, y: number, z: number): void {
@@ -88,6 +104,17 @@ export class Island {
   addRigidBody(rb: RigidBody): void {
     rb.addedToIsland = true;
     this.rigidBodies.push(rb);
+    if (rb.drag !== null) this.drags.push(rb.drag);
+    if (rb.type === RigidBodyType.DYNAMIC) {
+      if (rb.mass < this.minMass) this.minMass = rb.mass;
+      if (rb.mass > this.maxMass) this.maxMass = rb.mass;
+      if (Math.max(rb.li00, rb.li11, rb.li22) > 1.5 * Math.min(rb.li00, rb.li11, rb.li22)) this.extendedBody = true;
+    }
+  }
+
+  /** 大质量比接触保留支撑所需的子步数。 */
+  supportSubsteps(base: number, minimum: number): number {
+    return base < minimum && this.softContacts.length > 0 && this.maxMass >= this.minMass * 8 ? minimum : base;
   }
 
   addConstraintSolver(solver: ConstraintSolver, positionCorrection: number): void {
@@ -240,6 +267,18 @@ export class Island {
    */
   beginSubsteps(tick: TimeStep, sub: TimeStep, p: SoftSubstepParams): boolean {
     const bodies = this.rigidBodies, joints = this.solvers, contacts = this.softContacts;
+    // 地面支撑先于动态接触，顺序不依赖地形加载时机。
+    const ordered = this.orderedContacts;
+    ordered.length = 0;
+    for (let i = 0; i < contacts.length; i++) {
+      const c = contacts[i].constraint;
+      if (c.b1!.type === RigidBodyType.STATIC || c.b2!.type === RigidBodyType.STATIC) ordered.push(contacts[i]);
+    }
+    for (let i = 0; i < contacts.length; i++) {
+      const c = contacts[i].constraint;
+      if (c.b1!.type !== RigidBodyType.STATIC && c.b2!.type !== RigidBodyType.STATIC) ordered.push(contacts[i]);
+    }
+    for (let i = 0; i < contacts.length; i++) contacts[i] = ordered[i];
     // 休眠计时使用求解后的速度。
     for (let i = 0; i < bodies.length; i++) {
       const rb = bodies[i];
@@ -260,15 +299,32 @@ export class Island {
         if (b2.type === RigidBodyType.DYNAMIC && !b2.sleeping) b2.impactStamp = stamp;
       }
     }
-    // 撞击时两个阶段都多解几遍，第一遍之后只解碰到被撞刚体的接触
+    // 撞击标记决定额外迭代的接触范围。
     for (let i = 0; i < contacts.length; i++) {
       const c = contacts[i].constraint;
       contacts[i].impacted = impact && (c.b1!.impactStamp === stamp || c.b2!.impactStamp === stamp);
     }
-    const passes = impact ? p.impactIterations : p.iterations;
+    // 宽展支撑体合并后仍保留大质量比下的冲量传递迭代。
+    this.conditionedContacts = (contacts.length > 8 || this.extendedBody) && this.maxMass >= this.minMass * 8;
+    const minimumPasses = this.conditionedContacts ? Math.min(40, Math.max(10, Math.ceil(this.maxMass / this.minMass / 4))) : 0;
+    const passes = Math.max(minimumPasses, impact ? Math.max(p.impactIterations, p.iterations) : p.iterations);
     this.biasPasses = passes;
-    this.relaxPasses = impact ? p.impactIterations : p.relaxIterations;
+    this.relaxPasses = Math.max(minimumPasses, impact ? Math.max(p.impactIterations, p.relaxIterations) : p.relaxIterations);
     this.solveTotal = joints.length > 0 && p.jointIterations > passes ? p.jointIterations : passes;
+    let quiet = p.adaptiveIterations && !impact && !this.conditionedContacts && joints.length === 0 && (p.substeps >= 4 || p.substeps === 1);
+    let isotropic = true;
+    for (let i = 0; quiet && i < bodies.length; i++) {
+      const b = bodies[i];
+      if (b.type === RigidBodyType.STATIC) continue;
+      if (b.type !== RigidBodyType.DYNAMIC || b.drag !== null) { quiet = false; break; }
+      const limit = Math.max(b.sleepingVelocityThreshold, b.sleepingAngularVelocityThreshold);
+      if (b.vx * b.vx + b.vy * b.vy + b.vz * b.vz + b.wx * b.wx + b.wy * b.wy + b.wz * b.wz >= limit * limit ||
+        b.fx !== 0 || b.fy !== 0 || b.fz !== 0 || b.tx !== 0 || b.ty !== 0 || b.tz !== 0 ||
+        (p.sea && (p.seaStartY - b.transform.py) * p.seaDepthGradient >= 0)) quiet = false;
+      if (b.li01 !== 0 || b.li02 !== 0 || b.li12 !== 0 || b.li00 !== b.li11 || b.li11 !== b.li22) isotropic = false;
+    }
+    this.quietContacts = quiet;
+    this.isotropicContacts = isotropic;
     return true;
   }
 
@@ -278,38 +334,81 @@ export class Island {
     const bodies = this.rigidBodies, joints = this.solvers, contacts = this.softContacts;
     const jointsSi = this.solversSi, jointsNgs = this.solversNgs;
     const dynamic = p.dynamic, fixed = p.fixed, push = p.maxPushVelocity;
-    const passes = this.biasPasses, relaxPasses = this.relaxPasses, total = this.solveTotal;
+    const reuseAcrossSubsteps = this.relaxPasses > 0 && jointsSi.length === 0 && jointsNgs.length === 0;
+    const drags = this.drags;
+    const aggregateWarmStart = joints.length === 0 && drags.length === 0;
     let parity = p.parity;
-    // 没有关节位置修正且做过松弛时，下一子步的带偏置求解仍使用同一位姿。
-    const reuseAcrossSubsteps = relaxPasses > 0 && jointsSi.length === 0 && jointsNgs.length === 0;
+    let quiet = this.quietContacts;
     for (let s = 0; s < n; s++) {
       if (s > 0) sub.dtRatio = 1;
       for (let i = 0; i < bodies.length; i++) if (bodies[i].type === RigidBodyType.DYNAMIC) this.applySoftForces(bodies[i], h, p);
       for (let i = 0; i < joints.length; i++) joints[i].preSolveVelocity(sub);
-      for (let i = 0; i < joints.length; i++) joints[i].warmStart(sub);
-      for (let i = 0; i < contacts.length; i++) contacts[i].warmStart();
+      const ratio = sub.dtRatio;
+      for (let i = 0; i < joints.length; i++) {
+        const joint = joints[i];
+        sub.dtRatio = s > 0 || joint.softSubstepDt === 0 ? ratio : h / joint.softSubstepDt;
+        joint.warmStart(sub);
+        joint.softSubstepDt = h;
+      }
+      for (let i = 0; i < drags.length; i++) drags[i].warmStart();
+      // 同一 tick 的力臂与有效质量不变，无关节时按刚体复用接触合速度增量。
+      if (aggregateWarmStart) for (let i = 0; i < bodies.length; i++) {
+        const b = bodies[i];
+        if (b.type !== RigidBodyType.DYNAMIC) continue;
+        const vx = b.vx, vy = b.vy, vz = b.vz, wx = b.wx, wy = b.wy, wz = b.wz;
+        if (s > 0) {
+          b.vx += b.contactDeltaVX; b.vy += b.contactDeltaVY; b.vz += b.contactDeltaVZ;
+          b.wx += b.contactDeltaWX; b.wy += b.contactDeltaWY; b.wz += b.contactDeltaWZ;
+        }
+        b.contactDeltaVX = vx; b.contactDeltaVY = vy; b.contactDeltaVZ = vz;
+        b.contactDeltaWX = wx; b.contactDeltaWY = wy; b.contactDeltaWZ = wz;
+      }
+      if (!aggregateWarmStart || s === 0) for (let i = 0; i < contacts.length; i++) contacts[i].warmStart();
+      for (let i = 0; i < drags.length; i++) drags[i].solve(h, (s + 1) / n);
+      for (let i = 0; quiet && i < bodies.length; i++) {
+        const b = bodies[i], limit = Math.max(b.sleepingVelocityThreshold, b.sleepingAngularVelocityThreshold);
+        if (b.type === RigidBodyType.STATIC) continue;
+        if (b.vx * b.vx + b.vy * b.vy + b.vz * b.vz + b.wx * b.wx + b.wy * b.wy + b.wz * b.wz >= 4 * limit * limit) quiet = false;
+      }
+      const passes = quiet ? Math.min(this.biasPasses, this.isotropicContacts && (s > 0 || n === 1) ? 1 : 2) : this.biasPasses;
+      const relaxPasses = quiet ? Math.min(this.relaxPasses, n > 1 || this.isotropicContacts ? 1 : 2) : this.relaxPasses;
+      const total = quiet ? passes : this.solveTotal;
       for (let k = 0; k < total; k++) {
         for (let i = 0; i < joints.length; i++) joints[i].solveVelocity();
         const t = k - (total - passes);
         if (t < 0) continue;
         const reuse = t > 0 || (s > 0 && reuseAcrossSubsteps);
-        // 第一遍之后只解碰到被撞刚体的接触
+        let error = 0;
+        // 承重组合的额外迭代覆盖全部接触，其余组合仅扩展撞击接触。
         if (((t + parity) & 1) === 0) {
-          for (let i = 0; i < contacts.length; i++) if (t === 0 || contacts[i].impacted) contacts[i].solve(true, false, invH, dynamic, fixed, push, reuse);
+          for (let i = 0; i < contacts.length; i++) if (this.conditionedContacts || t < p.iterations || contacts[i].impacted) error += contacts[i].solve(true, false, invH, dynamic, fixed, push, reuse);
         } else {
-          for (let i = contacts.length - 1; i >= 0; i--) if (t === 0 || contacts[i].impacted) contacts[i].solve(true, true, invH, dynamic, fixed, push, reuse);
+          for (let i = contacts.length - 1; i >= 0; i--) if (this.conditionedContacts || t < p.iterations || contacts[i].impacted) error += contacts[i].solve(true, true, invH, dynamic, fixed, push, reuse);
         }
+        if (joints.length === 0 && error < p.tolerance) break;
       }
       for (let i = 0; i < joints.length; i++) joints[i].postSolveVelocity(sub);
       for (let i = 0; i < bodies.length; i++) bodies[i].integrate(h);
       for (let t = 0; t < relaxPasses; t++) {
         // 同一轮松弛只改速度；积分后的第一遍重算，其余遍复用。
         const reuse = t > 0;
+        let error = 0;
         if (((t + parity) & 1) === 0) {
-          for (let i = contacts.length - 1; i >= 0; i--) if (t === 0 || contacts[i].impacted) contacts[i].solve(false, true, invH, dynamic, fixed, push, reuse);
+          for (let i = contacts.length - 1; i >= 0; i--) if (this.conditionedContacts || t < p.relaxIterations || contacts[i].impacted) error += contacts[i].solve(false, true, invH, dynamic, fixed, push, reuse);
         } else {
-          for (let i = 0; i < contacts.length; i++) if (t === 0 || contacts[i].impacted) contacts[i].solve(false, false, invH, dynamic, fixed, push, reuse);
+          for (let i = 0; i < contacts.length; i++) if (this.conditionedContacts || t < p.relaxIterations || contacts[i].impacted) error += contacts[i].solve(false, false, invH, dynamic, fixed, push, reuse);
         }
+        if (joints.length === 0 && error < p.tolerance) break;
+      }
+      if (aggregateWarmStart) for (let i = 0; i < bodies.length; i++) {
+        const b = bodies[i];
+        if (b.type !== RigidBodyType.DYNAMIC) continue;
+        b.contactDeltaVX = b.vx - b.contactDeltaVX;
+        b.contactDeltaVY = b.vy - b.contactDeltaVY;
+        b.contactDeltaVZ = b.vz - b.contactDeltaVZ;
+        b.contactDeltaWX = b.wx - b.contactDeltaWX;
+        b.contactDeltaWY = b.wy - b.contactDeltaWY;
+        b.contactDeltaWZ = b.wz - b.contactDeltaWZ;
       }
       // 关节的位置修正（每个子步一次）
       for (let i = 0; i < jointsSi.length; i++) jointsSi[i].preSolvePosition(sub);
@@ -348,7 +447,8 @@ export class Island {
     for (let i = 0; i < bodies.length; i++) {
       const rb = bodies[i];
       if (rb.type === RigidBodyType.DYNAMIC) this.limitState(rb, p);
-      if (rb.isSleepy() && !rb.restless) rb.sleepTime += dt;
+      rb.drag?.finish();
+      if (rb.isSleepy() && !rb.restless && rb.drag === null) rb.sleepTime += dt;
       else rb.sleepTime = 0;
       if (rb.sleepTime < rb.sleepingTimeThreshold) sleepIsland = false;
     }
@@ -378,14 +478,17 @@ export class Island {
     const dynamic = rb.type === RigidBodyType.DYNAMIC;
     for (let s = 0; s < p.substeps; s++) {
       if (dynamic) this.applySoftForces(rb, h, p);
+      rb.drag?.warmStart();
+      rb.drag?.solve(h, (s + 1) / p.substeps);
       rb.integrate(h);
     }
   }
 
   /** 完成孤立刚体的限速、休眠计时和形状同步。 */
   finishSingleRigidBodySubsteps(tick: TimeStep, p: SoftSubstepParams, rb: RigidBody): void {
+    rb.drag?.finish();
     if (rb.type === RigidBodyType.DYNAMIC) this.limitState(rb, p);
-    if (rb.isSleepy() && !rb.restless) {
+    if (rb.isSleepy() && !rb.restless && rb.drag === null) {
       rb.sleepTime += tick.dt;
       if (rb.sleepTime >= rb.sleepingTimeThreshold) {
         rb.sleep();

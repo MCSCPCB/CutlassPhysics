@@ -1,10 +1,12 @@
 // 刚体。
 import { RigidBodyType } from "../core/dynamics/rigidbody/rigid-body-config.js";
 import type { RigidBody } from "../core/dynamics/rigidbody/rigid-body.js";
+import type { Shape } from "../core/dynamics/rigidbody/shape.js";
 import { matrixToQuaternion, quaternionToMatrix } from "./convert.js";
 import type { Quaternion, Vector3 } from "./math.js";
 import type { ShapeOptions } from "./shapes.js";
 import type { PhysicsWorld } from "./world.js";
+import { Drag, type DragOptions } from "./drag.js";
 
 function finite3(name: string, v: Vector3): void {
   if (!Number.isFinite(v.x) || !Number.isFinite(v.y) || !Number.isFinite(v.z)) {
@@ -21,7 +23,10 @@ function nonNegative(name: string, v: number): number {
  * 刚体的运动类型。
  *
  * @remarks
- * `"dynamic"` 表示受重力、力和碰撞影响。`"static"` 表示不运动，质量视为无穷大。`"kinematic"` 表示按设定的速度运动，不受力和碰撞影响，但会推动动态刚体。
+ *
+ * - `"dynamic"`：受重力、力和碰撞影响。
+ * - `"static"`：不运动，质量视为无穷大。
+ * - `"kinematic"`：按设定的速度运动，不受力和碰撞影响，但会推动动态刚体。
  */
 export type BodyType = "dynamic" | "static" | "kinematic";
 
@@ -40,7 +45,10 @@ export interface BodyOptions {
    * 刚体的碰撞形状，至少包含一个。
    *
    * @remarks
-   * 多个形状组成复合形状，可表示凹形物体。动态刚体的质量和转动惯量由形状体积与密度计算。
+   *
+   * - 多个形状组成复合形状，可表示凹形物体。
+   * - 动态刚体的质量和转动惯量由形状体积与密度计算。
+   * - 连续同材质的完整方块会合并碰撞盒，存档保留逐格信息；易碎和悬浮方块保留独立形状。
    *
    * @example compound-shape.ts
    * {@includeCode ../../examples/concepts/compound-shape.ts}
@@ -124,6 +132,9 @@ export class Body {
   /** 内部使用：内核里的刚体
    * @internal */
   readonly core: RigidBody;
+  /** 合并碰撞盒前的逻辑形状，用于存档。
+   * @internal */
+  snapshotShapes: readonly Shape[] | null = null;
   private readonly owner: PhysicsWorld;
   private valid = true;
   /** 上一次被世界推进之前的位置和朝向（用于插值），由世界在每一步开始时记录 */
@@ -145,6 +156,7 @@ export class Body {
   /** 内部使用：世界销毁或刚体移除时调用
    * @internal */
   invalidate(): void {
+    this.core.drag = null;
     this.valid = false;
   }
 
@@ -197,6 +209,7 @@ export class Body {
     const t = value === "static" ? RigidBodyType.STATIC : value === "kinematic" ? RigidBodyType.KINEMATIC : value === "dynamic" ? RigidBodyType.DYNAMIC : -1;
     if (t < 0) throw new Error(`未知的刚体类型：${String(value)}`);
     if (t === this.core.type) return;
+    this.core.drag = null;
     this.core.setType(t); // 内部重算质量时会唤醒刚体
   }
 
@@ -344,8 +357,10 @@ export class Body {
    * 刚体浸在水或岩浆里的体积，单位为格³。
    *
    * @remarks
-   * 每个 tick 推进前更新；包括空心船体里托住的空气。没有地形、关闭了 `fluids`、或刚体不是动态刚体时为 `0`。
-   * 刚体休眠时保留休眠前的值。
+   *
+   * - 每个 tick 推进前更新，体积包括空心船体里托住的空气。
+   * - 没有地形、关闭 `fluids` 或刚体不是动态刚体时为 `0`。
+   * - 刚体休眠时保留休眠前的值。
    */
   get submerged(): number {
     this.check();
@@ -576,5 +591,16 @@ export class Body {
   remove(): void {
     if (!this.valid) return;
     this.owner.removeBody(this);
+  }
+
+  /**
+   * 创建抓取约束，替换此刚体已有的抓取约束。
+   *
+   * @example drag.ts
+   * {@includeCode ../../examples/body/drag.ts}
+   */
+  createDrag(options: DragOptions): Drag {
+    this.check();
+    return new Drag(this, options);
   }
 }

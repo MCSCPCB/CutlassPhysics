@@ -7,6 +7,7 @@ import type { JointLink } from "../constraint/joint/joint-link.js";
 import type { ContactLink } from "../contact.js";
 import type { World } from "../world.js";
 import type { Shape } from "./shape.js";
+import type { DragConstraint } from "../constraint/drag-constraint.js";
 
 /** 刚体。矩阵和向量都存成标量字段：mIJ 是第 I 行第 J 列 */
 export class RigidBody {
@@ -42,6 +43,7 @@ export class RigidBody {
   speculativeStale = false;
   /** 本 tick 是否跳过休眠计时，默认为 false。流体不平衡时由适配层设置。 */
   restless = false;
+  drag: DragConstraint | null = null;
   readonly transform = new Transform();
 
   type: number;
@@ -75,6 +77,9 @@ export class RigidBody {
   /** 这一步接触产生的冲量 */
   lciX = 0; lciY = 0; lciZ = 0;
   aciX = 0; aciY = 0; aciZ = 0;
+  /** 子步接触产生的速度增量，供同一 tick 内的热启动复用。 */
+  contactDeltaVX = 0; contactDeltaVY = 0; contactDeltaVZ = 0;
+  contactDeltaWX = 0; contactDeltaWY = 0; contactDeltaWZ = 0;
 
   addedToIsland = false;
   gravityScale = 1;

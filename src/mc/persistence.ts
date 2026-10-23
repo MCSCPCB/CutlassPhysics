@@ -11,14 +11,29 @@ export type PhysicsStorageTarget = Pick<typeof world, "getDynamicProperty" | "se
 export interface PersistenceOptions extends RestoreOptions, SnapshotOptions {
   /** 默认 100 tick（正常速度下 5 秒）。0 关闭自动保存，仍可显式调用 save。 */
   autoSaveIntervalTicks?: number;
-  /** 正常退出世界时同步补存。默认随自动保存启用；手动模式可单独设为 true。异常终止不触发此事件。 */
+  /**
+   * 是否在正常退出世界时同步补存。
+   *
+   * @remarks
+   *
+   * - 默认随自动保存启用；手动模式可单独设为 `true`。
+   * - 异常终止不触发保存。
+   */
   saveOnShutdown?: boolean;
   /**
    * 是否加载已有记录，默认为 true。
    * false 从空世界开始，下次保存替换记录；未知版本或非法内容仍会阻止覆盖。
    */
   autoLoad?: boolean;
-  /** 自动保存或正常退出时补存出错时调用，参数是写入时抛出的原始错误；省略时写入 ContentLog。自动保存失败后在下一个保存间隔重试。 */
+  /**
+   * 自动保存或正常退出时补存出错的回调。
+   *
+   * @remarks
+   *
+   * - 参数为写入时抛出的原始错误。
+   * - 省略时将错误写入 ContentLog。
+   * - 自动保存失败后在下一个保存间隔重试。
+   */
   onError?: (error: unknown) => void;
   /** 每次显式或自动保存成功后调用，也包含跳过写入的结果。 */
   onSave?: (result: PersistenceSaveResult) => void;
@@ -41,8 +56,12 @@ const owners = new WeakMap<PhysicsStorageTarget, Map<string, object>>();
 
 /**
  * 当前行为包的命名物理存档，通过世界动态属性保存。
- * 记录归属行为包 UUID。大记录分片写入后切换 _active，写入失败时保留旧记录。
- * 提交顺序仅覆盖脚本 API 调用，不保证进程崩溃时的磁盘事务性。
+ *
+ * @remarks
+ *
+ * - 记录归属行为包 UUID。
+ * - 大记录分片写入后切换 `_active`，写入失败时保留旧记录。
+ * - 提交顺序仅覆盖脚本 API 调用，不保证进程崩溃时的磁盘事务性。
  */
 export class PhysicsWorldStore {
   private readonly prefix: string;
@@ -63,8 +82,13 @@ export class PhysicsWorldStore {
   }
 
   /**
-   * 读取并校验。没有存档，或者记录缺片、JSON 损坏时返回 undefined（open 会建空世界，下次保存覆盖它）。
-   * 解析出来的记录是未知格式、版本或内容不合法时抛错，保存也不会覆盖它。每次都重新读所有分片。
+   * 读取并校验存档。
+   *
+   * @remarks
+   *
+   * - 没有存档、记录缺片或 JSON 损坏时返回 `undefined`；`open` 会创建空世界，下次保存覆盖原记录。
+   * - 记录格式、版本未知或内容不合法时抛出错误，保存不会覆盖原记录。
+   * - 每次读取所有分片。
    */
   read(): PhysicsSnapshot | undefined {
     const value = this.store.load();
@@ -77,15 +101,27 @@ export class PhysicsWorldStore {
     return snapshot;
   }
 
-  /** 保存完整快照；内容相同时返回 false 并跳过写入。有活动会话时仅允许会话保存。 */
+  /**
+   * 保存完整快照。
+   *
+   * @remarks
+   *
+   * - 内容相同时返回 `false` 并跳过写入。
+   * - 有活动会话时仅允许会话保存。
+   */
   write(snapshot: PhysicsSnapshot): boolean {
     this.checkOwner(undefined);
     return this.commit(readSnapshot(snapshot), false);
   }
 
   /**
-   * 捕获并保存当前状态，内容相同时跳过写入。
-   * 写入前校验已有记录的维度和版本；有活动会话时仅允许会话保存。
+   * 捕获并保存当前状态。
+   *
+   * @remarks
+   *
+   * - 内容相同时跳过写入。
+   * - 写入前校验已有记录的维度和版本。
+   * - 有活动会话时仅允许会话保存。
    */
   save(physics: PhysicsWorld, options: SnapshotOptions = {}): PersistenceSaveResult {
     return this.saveAs(undefined, physics, options);
@@ -118,7 +154,14 @@ export class PhysicsWorldStore {
     return changed;
   }
 
-  /** 删除活动记录后清理分片。清理失败可重试；有活动会话时抛错。 */
+  /**
+   * 删除活动记录后清理分片。
+   *
+   * @remarks
+   *
+   * - 清理失败后可重新调用。
+   * - 有活动会话时抛出错误。
+   */
   delete(): void {
     if (owners.get(this.target)?.has(this.key)) throw new Error("请先关闭此存档的持久化会话");
     // 清除存储缓存；活动记录删除失败时由后续分片清理重试并报告错误。
@@ -127,8 +170,13 @@ export class PhysicsWorldStore {
   }
 
   /**
-   * 打开持久化世界，默认加载已有记录并每 100 tick 自动保存。
-   * 同一后端及存档名仅允许一个活动会话；自动保存默认包含正常退出保存。
+   * 打开持久化世界。
+   *
+   * @remarks
+   *
+   * - 默认加载已有记录，并每 100 tick 自动保存。
+   * - 同一后端及存档名仅允许一个活动会话。
+   * - 自动保存默认包含正常退出保存。
    */
   open(dimension: Dimension, options: PersistenceOptions = {}): PersistentPhysicsWorld {
     let active = owners.get(this.target);
@@ -235,8 +283,13 @@ export class PersistentPhysicsWorld {
   }
 
   /**
-   * 保存后停止定时器并销毁世界；保存失败时保留会话。
-   * save=false 放弃未保存变更。退出回调中的退订失败不影响其余清理。
+   * 保存后停止定时器并销毁世界。
+   *
+   * @remarks
+   *
+   * - 保存失败时保留会话。
+   * - `save=false` 放弃未保存变更。
+   * - 退出回调中的退订失败不影响其余清理。
    */
   close(save = true): void {
     if (this.closed) return;

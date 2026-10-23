@@ -329,6 +329,7 @@ export class VoxelCollider {
    * 在 world.step 前调用；dt 为下一步的时长，单位为秒。
    */
   update(dt = TICK): void {
+    this.world.wakeContacts(dt);
     this.updateCount++;
     if (this.updateCount - this.lastPrune >= PRUNE_INTERVAL) {
       this.prune();

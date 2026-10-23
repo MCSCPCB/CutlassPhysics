@@ -95,13 +95,12 @@ export function isStateIndependent(typeId: string): boolean {
 }
 
 /**
- * 形状由游戏算好的连接、拐角状态决定的原版方块：栅栏、玻璃板、铁栏杆读 `minecraft:connection_*`，楼梯读 `minecraft:corner`。
- * 生成的数据表里没有这些状态，形状由 block-neighbors.ts 的 stateBoxes 构造
+ * 栅栏、玻璃板、铁栏杆读连接状态，楼梯读拐角；栅栏门和墙使用显示高度。
  */
 export function isStateShaped(typeId: string): boolean {
   if (typeId.includes(":") && !typeId.startsWith("minecraft:")) return false;
   const n = typeId.replace(/^minecraft:/, "");
-  return n === "fence" || n.endsWith("_fence") || n.endsWith("_stairs") || n === "glass_pane" ||
+  return n === "fence" || n.endsWith("_fence") || n === "fence_gate" || n.endsWith("_fence_gate") || n.endsWith("_wall") || n.endsWith("_stairs") || n === "glass_pane" ||
     n.endsWith("_stained_glass_pane") || n.endsWith("_bars");
 }
 

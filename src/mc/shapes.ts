@@ -12,7 +12,10 @@ import type { PhysicsWorldOptions } from "./world.js";
  * 所有碰撞形状共有的选项。
  *
  * @remarks
- * 尺寸均为完整尺寸，`size: { x: 1, y: 1, z: 1 }` 的大小与一个方块相同。两个形状仅当“A 的碰撞分组与 B 的碰撞掩码”和“B 的碰撞分组与 A 的碰撞掩码”的按位与结果均不为零时才会发生碰撞。两个形状接触时，摩擦系数取二者的几何平均值。
+ *
+ * - 尺寸均为完整尺寸，`size: { x: 1, y: 1, z: 1 }` 的大小与一个方块相同。
+ * - 两个形状仅当“A 的碰撞分组与 B 的碰撞掩码”和“B 的碰撞分组与 A 的碰撞掩码”的按位与结果均不为零时才会发生碰撞。
+ * - 两个形状接触时，摩擦系数取二者的几何平均值。
  */
 export interface ShapeBaseOptions {
   /**
@@ -68,8 +71,10 @@ export interface ShapeBaseOptions {
    * 形状对应的方块信息。
    *
    * @remarks
-   * 由 {@link blockShapes} 生成，随存档保存。悬浮和易碎属性按所属世界的方块登记表解析。
-   * 质量、摩擦和弹性仍取形状的 density、friction、restitution。
+   *
+   * - 由 {@link blockShapes} 生成，随存档保存。
+   * - 悬浮和易碎属性按所属世界的方块登记表解析。
+   * - 质量、摩擦和弹性取形状的 `density`、`friction`、`restitution`。
    */
   block?: BodyBlock;
 }

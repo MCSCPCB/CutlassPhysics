@@ -34,22 +34,24 @@ export class ManifoldUpdater {
   private readonly manifold: Manifold;
   private readonly oldIds: number[] = [];
   private readonly oldImpulses: ContactImpulse[] = [];
+  private readonly oldAnchors: { ax: number; ay: number; az: number; bx: number; by: number; bz: number }[] = [];
 
   constructor(manifold: Manifold) {
     this.manifold = manifold;
     for (let i = 0; i < MAX_MANIFOLD_POINTS; i++) {
       this.oldIds.push(-1);
       this.oldImpulses.push(new ContactImpulse());
+      this.oldAnchors.push({ ax: 0, ay: 0, az: 0, bx: 0, by: 0, bz: 0 });
     }
   }
 
-  /** 一次性更新：整个流形换成新的检测结果 */
-  totalUpdate(result: DetectorResult, tf1: Transform, tf2: Transform): void {
+  /** 一次性更新；子步模式按两侧局部锚点匹配，每个旧点最多使用一次。 */
+  totalUpdate(result: DetectorResult, tf1: Transform, tf2: Transform, checkAnchors = false): void {
     const m = this.manifold;
     const numOldPoints = m.numPoints;
     const num = result.numPoints;
     // 编号严格递增且顺序未变化时，直接复用对应槽位的冲量。
-    let unchanged = num === numOldPoints;
+    let unchanged = !checkAnchors && num === numOldPoints;
     for (let i = 0; unchanged && i < num; i++) {
       const id = result.points[i].id;
       if (id !== m.points[i].id || (i > 0 && id <= result.points[i - 1].id)) unchanged = false;
@@ -66,19 +68,33 @@ export class ManifoldUpdater {
       }
       return;
     }
-    // 热启动仅缓存旧编号和冲量，位置由新检测结果重建。
+    // 缓存旧接触数据，位置由新检测结果重建。
     for (let i = 0; i < numOldPoints; i++) {
       this.oldIds[i] = m.points[i].id;
       this.oldImpulses[i].copyFrom(m.points[i].impulse);
+      if (checkAnchors) {
+        const p = m.points[i], a = this.oldAnchors[i];
+        a.ax = p.lp1X; a.ay = p.lp1Y; a.az = p.lp1Z;
+        a.bx = p.lp2X; a.by = p.lp2Y; a.bz = p.lp2Z;
+      }
     }
 
     m.numPoints = num;
+    let used = 0;
     for (let i = 0; i < num; i++) {
       const p = m.points[i];
       p.initialize(result.points[i], tf1, tf2);
-      // 编号相同的旧接触点：接过它的冲量
+      // 子步模式允许点序或编号变化；常规求解仍按编号匹配。
       for (let k = 0; k < numOldPoints; k++) {
-        if (p.id === this.oldIds[k]) {
+        if (checkAnchors || p.id === this.oldIds[k]) {
+          if (checkAnchors) {
+            if ((used & (1 << k)) !== 0) continue;
+            const a = this.oldAnchors[k];
+            const dx = p.lp1X - a.ax, dy = p.lp1Y - a.ay, dz = p.lp1Z - a.az;
+            const ex = p.lp2X - a.bx, ey = p.lp2Y - a.by, ez = p.lp2Z - a.bz;
+            if (dx * dx + dy * dy + dz * dz >= 25e-4 || ex * ex + ey * ey + ez * ez >= 25e-4) continue;
+            used |= 1 << k;
+          }
           p.impulse.copyFrom(this.oldImpulses[k]);
           p.warmStarted = true;
           break;
