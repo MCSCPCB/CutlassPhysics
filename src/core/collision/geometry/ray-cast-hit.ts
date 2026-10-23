@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/geometry/RayCastHit.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/geometry/RayCastHit.hx（MIT，见 Credits.md）
 
 /** 一次射线命中的结果，世界坐标 */
 export class RayCastHit {

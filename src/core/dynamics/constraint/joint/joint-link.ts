@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/JointLink.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/JointLink.hx（MIT，见 Credits.md）
 import type { RigidBody } from "../../rigidbody/rigid-body.js";
 import type { Joint } from "./joint.js";
 

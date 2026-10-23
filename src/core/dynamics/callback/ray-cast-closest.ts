@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/callback/RayCastClosest.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/callback/RayCastClosest.hx（MIT，见 Credits.md）
 import type { RayCastHit } from "../../collision/geometry/ray-cast-hit.js";
 import type { Shape } from "../rigidbody/shape.js";
 import type { RayCastCallback } from "./ray-cast-callback.js";

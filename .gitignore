@@ -1,21 +1,30 @@
-# 公开仓库文件清单。
 /*
 !/src/
 !/examples/
+!/packs/
+!/docs/
 !/README.md
 !/LICENSE
-!/THIRD-PARTY-NOTICES.txt
+!/Credits.md
 !/package.json
 !/package-lock.json
 !/tsconfig.json
 !/tsconfig.build.json
+!/typedoc.json
 !/build.mjs
 !/.gitignore
+!/.github/
+/.github/*
+!/.github/workflows/
+/.github/workflows/*
+!/.github/workflows/docs.yml
 
-# 构建产物和本地文件。
 node_modules/
 dist/
 *.tsbuildinfo
 *.log
 .DS_Store
 Thumbs.db
+*.zip
+*.mcpack
+*.mcaddon

@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/{PrismaticJoint,PrismaticJointConfig}.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/{PrismaticJoint,PrismaticJointConfig}.hx（MIT，见 Credits.md）
 import { Vec3 } from "../../../common/vec3.js";
 import type { RigidBody } from "../../rigidbody/rigid-body.js";
 import type { TimeStep } from "../../time-step.js";
@@ -111,7 +111,7 @@ export class PrismaticJoint extends Joint {
     j.ang2X = 0; j.ang2Y = 0; j.ang2Z = 1;
   }
 
-  /** 同步锚点和坐标系，然后更新公共坐标系、相对转动和位移（原版 _syncAnchors + computeErrors） */
+  /** 同步锚点和坐标系，然后更新公共坐标系、相对转动和位移 */
   override syncAnchors(): void {
     super.syncAnchors();
     const b = this.basis;
@@ -163,7 +163,7 @@ export class PrismaticJoint extends Joint {
       s = 0.5 / s;
       qX = (m02 + m20) * s; qY = (m12 + m21) * s; qW = (m10 - m01) * s;
     }
-    // 转动向量 = 转轴 × 转角。原版 safeAcos：超出 [-1, 1] 时取端点（原版的 π 是截断的 3.14159265358979）
+    // 转动向量 = 转轴 × 转角。反余弦：超出 [-1, 1] 时取端点（π 是截断的 3.14159265358979）
     const theta = (qW <= -1 ? 3.14159265358979 : qW >= 1 ? 0 : Math.acos(qW)) * 2;
     let l = qX * qX + qY * qY + qZ * qZ;
     if (l > 0) l = 1 / Math.sqrt(l);

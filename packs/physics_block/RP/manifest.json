@@ -1,0 +1,29 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Cutlass 方块物理 资源包",
+    "description": "基于实体手持物品的方块物理",
+    "uuid": "1bc6abf6-2ee0-45c1-8e27-f4f3e5746dbb",
+    "version": [
+      0,
+      0,
+      1
+    ],
+    "min_engine_version": [
+      1,
+      26,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "9f0ecc7d-4454-411c-8a35-a98e55a9771d",
+      "version": [
+        0,
+        0,
+        1
+      ]
+    }
+  ]
+}

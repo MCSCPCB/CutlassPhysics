@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/contact/ContactImpulse.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/contact/ContactImpulse.hx（MIT，见 Credits.md）
 
 /** 一个接触点上累积的冲量，下一步用来热启动 */
 export class ContactImpulse {
@@ -24,7 +24,7 @@ export class ContactImpulse {
     this.impulseLZ = 0;
   }
 
-  /** 复制另一个冲量。和原版一样不复制 impulseP */
+  /** 复制另一个冲量。不复制 impulseP */
   copyFrom(imp: ContactImpulse): void {
     this.impulseN = imp.impulseN;
     this.impulseT = imp.impulseT;

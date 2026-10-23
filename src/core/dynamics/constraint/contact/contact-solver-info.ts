@@ -1,5 +1,5 @@
 // 移植自 OimoPhysics src/oimo/dynamics/constraint/info/{JacobianRow,contact/ContactSolverInfo,contact/ContactSolverInfoRow}.hx
-// （MIT，见 THIRD-PARTY-NOTICES.txt）。
+// （MIT，见 Credits.md）。
 import { MAX_MANIFOLD_POINTS } from "../../../settings.js";
 import type { RigidBody } from "../../rigidbody/rigid-body.js";
 import type { ContactImpulse } from "./contact-impulse.js";

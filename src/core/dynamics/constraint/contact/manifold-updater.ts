@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/contact/ManifoldUpdater.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/contact/ManifoldUpdater.hx（MIT，见 Credits.md）
 import type { DetectorResult, DetectorResultPoint } from "../../../collision/narrowphase/detector-result.js";
 import type { Transform } from "../../../common/transform.js";
 import { CONTACT_PERSISTENCE_THRESHOLD, MAX_MANIFOLD_POINTS } from "../../../settings.js";

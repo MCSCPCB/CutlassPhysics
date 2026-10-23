@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/broadphase/BroadPhase.hx 里的私有类 ConvexSweepGeometry、AabbGeometry（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/broadphase/BroadPhase.hx 里的私有类 ConvexSweepGeometry、AabbGeometry（MIT，见 Credits.md）
 // 宽相做凸体扫掠时用：把“凸体沿平移扫过的范围”和“代理的包围盒”都包装成凸几何体，交给 GJK 判断是否相交。
 // 复用支撑点向量。
 import type { Transform } from "../../common/transform.js";

@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/solver/direct/DirectJointConstraintSolver.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/solver/direct/DirectJointConstraintSolver.hx（MIT，见 Credits.md）
 import { MAX_JACOBIAN_ROWS, POSITION_NGS_BAUMGARTE, POSITION_SPLIT_IMPULSE_BAUMGARTE } from "../../../settings.js";
 import type { TimeStep } from "../../time-step.js";
 import { ConstraintSolver } from "../constraint-solver.js";
@@ -43,7 +43,7 @@ export class DirectJointConstraintSolver extends ConstraintSolver {
     }
   }
 
-  /** 每一行的冲量换算成速度变化，加到 l1..a2 上（原版 applyImpulses 等共同的循环） */
+  /** 每一行的冲量换算成速度变化，加到 l1..a2 上 */
   private accumulate(impulses: number[]): void {
     const info = this.info;
     this.linearSet = false;

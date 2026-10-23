@@ -1,0 +1,63 @@
+{
+  "format_version": "1.20.30",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "cutlass:physics_block",
+      "geometry": {
+        "default": "geometry.cutlass.block"
+      },
+      "materials": {
+        "default": "opaque_block"
+      },
+      "textures": {
+        "default": "textures/blocks/stone"
+      },
+      "render_controllers": [
+        "controller.render.cutlass.block"
+      ],
+      "animations": {
+        "input": "animation.cutlass.fancy.input",
+        "rotation": "animation.cutlass.block.rotation",
+        "scale": "animation.cutlass.block.scale",
+        "item_scale": "animation.cutlass.block.item_scale"
+      },
+      "scripts": {
+        "should_update_bones_and_effects_offscreen": true,
+        "initialize": [
+          "v.pose_cn = v.pose_cn ?? -1;",
+          "v.pose_cx = v.pose_cx ?? 0;",
+          "v.pose_cy = v.pose_cy ?? 0;",
+          "v.pose_cz = v.pose_cz ?? 0;",
+          "v.pose_cqx = v.pose_cqx ?? 0;",
+          "v.pose_cqy = v.pose_cqy ?? 0;",
+          "v.pose_cqz = v.pose_cqz ?? 0;",
+          "v.pose_cqw = v.pose_cqw ?? 1;",
+          "v.pose_moving = v.pose_moving ?? 0; v.pose_serial = v.pose_serial ?? 0; v.pose_dt = v.pose_dt ?? 1;",
+          "v.pose_initialized=0; v.pose_ready=0; v.pose_received=-1; v.pose_seen=0; v.pose_age=0; v.pose_alpha=1; v.pose_duration=0.05; v.pose_frame=0.05;",
+          "v.pose_rate=20; v.pose_rt=1; v.pose_rn=20; v.pose_rt2=0.125; v.pose_rn2=2.5; v.pose_dv=0; v.pose_lo=0;",
+          "v.pose_px=0; v.pose_py=0; v.pose_pz=0; v.pose_qx=0; v.pose_qy=0; v.pose_qz=0; v.pose_qw=1; v.pitch=0; v.yaw=0; v.roll=0; v.pose_play=0; v.pose_was_moving=0;"
+        ],
+        "animate": [
+          "rotation",
+          "scale",
+          "item_scale"
+        ],
+        "pre_animation": [
+          "v.pose_ready = (q.property('cutlass:scale') > 0) && v.pose_cn >= 0;",
+          "v.pose_step=math.min(q.delta_time,math.min(v.pose_frame,0.05)); v.pose_frame=q.delta_time; v.pose_age=v.pose_age+q.delta_time; v.pose_changed=v.pose_ready && (v.pose_serial != v.pose_seen || !v.pose_initialized);",
+          "v.pose_changed ? { v.pose_gap=v.pose_cn-v.pose_received; v.pose_reset=!v.pose_initialized || v.pose_gap<=0 || v.pose_gap>60; v.pose_near=!v.pose_reset && v.pose_was_moving; v.pose_rt=v.pose_near ? v.pose_rt*0.95+v.pose_age : v.pose_rt; v.pose_rn=v.pose_near ? v.pose_rn*0.95+v.pose_gap : v.pose_rn; v.pose_rt2=v.pose_near ? v.pose_rt2*0.6+v.pose_age : v.pose_rt2; v.pose_rn2=v.pose_near ? v.pose_rn2*0.6+v.pose_gap : v.pose_rn2; v.pose_r1=v.pose_rn/math.max(v.pose_rt,0.001); v.pose_r2=v.pose_rn2/math.max(v.pose_rt2,0.001); v.pose_off=v.pose_r2>v.pose_r1*1.3 ? 1 : (v.pose_r2<v.pose_r1*0.7 ? -1 : 0); v.pose_dv=v.pose_near ? (v.pose_off==0 ? 0 : (v.pose_off==v.pose_lo ? v.pose_dv+1 : 1)) : v.pose_dv; v.pose_lo=v.pose_near ? v.pose_off : v.pose_lo; v.pose_rt=v.pose_dv>=3 ? v.pose_rt2*8 : v.pose_rt; v.pose_rn=v.pose_dv>=3 ? v.pose_rn2*8 : v.pose_rn; v.pose_dv=v.pose_dv>=3 ? 0 : v.pose_dv; v.pose_rate=v.pose_reset ? 20 : math.min(v.pose_rn/math.max(v.pose_rt,0.001),25); v.pose_rt=v.pose_reset ? 1 : v.pose_rt; v.pose_rn=v.pose_reset ? 20 : v.pose_rn; v.pose_rt2=v.pose_reset ? 0.125 : v.pose_rt2; v.pose_rn2=v.pose_reset ? 2.5 : v.pose_rn2; v.pose_interval=math.max(math.max(v.pose_dt,v.pose_near ? v.pose_gap : 0)/v.pose_rate,v.pose_near ? v.pose_age : 0); v.pose_duration=math.max(v.pose_interval,v.pose_duration*(1-v.pose_alpha)+v.pose_interval*v.pose_alpha); v.pose_ax=v.pose_initialized ? v.pose_px : v.pose_cx; v.pose_ay=v.pose_initialized ? v.pose_py : v.pose_cy; v.pose_az=v.pose_initialized ? v.pose_pz : v.pose_cz; v.pose_aqx=v.pose_initialized ? v.pose_qx : v.pose_cqx; v.pose_aqy=v.pose_initialized ? v.pose_qy : v.pose_cqy; v.pose_aqz=v.pose_initialized ? v.pose_qz : v.pose_cqz; v.pose_aqw=v.pose_initialized ? v.pose_qw : v.pose_cqw; v.pose_alpha=v.pose_initialized ? 0 : 1; v.pose_age=0; v.pose_received=v.pose_cn; v.pose_seen=v.pose_serial; v.pose_was_moving=v.pose_moving; };",
+          "v.pose_play=v.pose_ready && (v.pose_changed || v.pose_alpha<1);",
+          "v.pose_play ? { v.pose_alpha=math.min(1,v.pose_alpha+v.pose_step/v.pose_duration); v.pose_px=v.pose_ax+(v.pose_cx-v.pose_ax)*v.pose_alpha; v.pose_py=v.pose_ay+(v.pose_cy-v.pose_ay)*v.pose_alpha; v.pose_pz=v.pose_az+(v.pose_cz-v.pose_az)*v.pose_alpha; v.pose_dot=v.pose_aqx*v.pose_cqx+v.pose_aqy*v.pose_cqy+v.pose_aqz*v.pose_cqz+v.pose_aqw*v.pose_cqw; v.pose_sign=v.pose_dot<0 ? -1 : 1; v.pose_qx=v.pose_aqx+(v.pose_cqx*v.pose_sign-v.pose_aqx)*v.pose_alpha; v.pose_qy=v.pose_aqy+(v.pose_cqy*v.pose_sign-v.pose_aqy)*v.pose_alpha; v.pose_qz=v.pose_aqz+(v.pose_cqz*v.pose_sign-v.pose_aqz)*v.pose_alpha; v.pose_qw=v.pose_aqw+(v.pose_cqw*v.pose_sign-v.pose_aqw)*v.pose_alpha; v.pose_len=math.max(0.0001,math.sqrt(v.pose_qx*v.pose_qx+v.pose_qy*v.pose_qy+v.pose_qz*v.pose_qz+v.pose_qw*v.pose_qw)); v.pose_qx=v.pose_qx/v.pose_len; v.pose_qy=v.pose_qy/v.pose_len; v.pose_qz=v.pose_qz/v.pose_len; v.pose_qw=v.pose_qw/v.pose_len; v.pose_test=v.pose_qx*v.pose_qy+v.pose_qz*v.pose_qw; v.pose_sx=2*(v.pose_qx*v.pose_qw-v.pose_qy*v.pose_qz); v.pose_cosx=1-2*(v.pose_qx*v.pose_qx+v.pose_qz*v.pose_qz); v.pose_cosz=math.sqrt(v.pose_sx*v.pose_sx+v.pose_cosx*v.pose_cosx); v.pose_pole=v.pose_cosz<0.00001; v.pitch=v.pose_pole ? v.pitch : math.atan2(v.pose_sx,v.pose_cosx); v.yaw=v.pose_test>0 ? 2*math.atan2(v.pose_qx+v.pose_qy,v.pose_qw+v.pose_qz)-v.pitch : v.pitch-2*math.atan2(v.pose_qx-v.pose_qy,v.pose_qw-v.pose_qz); v.roll=math.atan2(2*v.pose_test,v.pose_cosz); };",
+          "v.pose_initialized = v.pose_ready;",
+          "v.local_pitch = q.property('cutlass:local_pitch');",
+          "v.local_yaw = q.property('cutlass:local_yaw');",
+          "v.local_roll = q.property('cutlass:local_roll');",
+          "v.local_x = q.property('cutlass:local_x');",
+          "v.local_y = q.property('cutlass:local_y');",
+          "v.local_z = q.property('cutlass:local_z');"
+        ]
+      },
+      "enable_attachables": true
+    }
+  }
+}

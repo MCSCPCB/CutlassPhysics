@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/broadphase/{Proxy,ProxyPair}.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/broadphase/{Proxy,ProxyPair}.hx（MIT，见 Credits.md）
 import type { Aabb } from "../geometry/aabb.js";
 
 /** 宽相里的一个包围盒。物理部分用 userData 连接到对应的形状 */

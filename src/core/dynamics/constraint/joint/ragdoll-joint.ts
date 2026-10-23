@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/{RagdollJoint,RagdollJointConfig}.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/{RagdollJoint,RagdollJointConfig}.hx（MIT，见 Credits.md）
 import { Vec3 } from "../../../common/vec3.js";
 import { MIN_RAGDOLL_MAX_SWING_ANGLE } from "../../../settings.js";
 import type { RigidBody } from "../../rigidbody/rigid-body.js";
@@ -20,7 +20,7 @@ export class RagdollJointConfig extends JointConfig {
   readonly twistLimitMotor = new RotationalLimitMotor();
   /** 摆动方向的弹簧阻尼 */
   readonly swingSpringDamper = new SpringDamper();
-  /** 绕两个摆动轴各自最多转多少（弧度，要大于 0）。原版的 π 是截断的 3.14159265358979 */
+  /** 绕两个摆动轴各自最多转多少（弧度，要大于 0）。π 是截断的 3.14159265358979 */
   maxSwingAngle1 = 3.14159265358979;
   maxSwingAngle2 = 3.14159265358979;
 
@@ -50,7 +50,7 @@ export class RagdollJoint extends Joint {
   /** 椭圆锥的两个半角（弧度），不小于 MIN_RAGDOLL_MAX_SWING_ANGLE */
   maxSwingAngle1: number;
   maxSwingAngle2: number;
-  /** 摆出锥外时把它推回去的方向（世界坐标）。在锥里时不更新，保留上一次的值（和原版一样） */
+  /** 摆出锥外时把它推回去的方向（世界坐标）。在锥里时不更新，保留上一次的值 */
   swingAxisX = 0; swingAxisY = 0; swingAxisZ = 0;
   /** 扭转约束的方向：两个扭转轴的角平分线（世界坐标） */
   twistAxisX = 0; twistAxisY = 0; twistAxisZ = 0;
@@ -134,7 +134,7 @@ export class RagdollJoint extends Joint {
     }
   }
 
-  /** 同步锚点和坐标系，然后更新摆动角、扭转角、约束方向和偏差（原版 _syncAnchors + computeErrors） */
+  /** 同步锚点和坐标系，然后更新摆动角、扭转角、约束方向和偏差 */
   override syncAnchors(): void {
     super.syncAnchors();
     const x1X = this.bX1X, x1Y = this.bX1Y, x1Z = this.bX1Z;
@@ -176,7 +176,7 @@ export class RagdollJoint extends Joint {
     const s00 = 1 - yy - zz, s01 = xy - wz, s02 = xz + wy;
     const s10 = xy + wz, s11 = 1 - xx - zz, s12 = yz - wx;
     const s20 = xz - wy, s21 = yz + wx, s22 = 1 - xx - yy;
-    // 原版 safeAcos：超出 [-1, 1] 时取端点（原版的 π 是截断的 3.14159265358979）
+    // 反余弦：超出 [-1, 1] 时取端点（π 是截断的 3.14159265358979）
     this.swingAngle = (qW <= -1 ? 3.14159265358979 : qW >= 1 ? 0 : Math.acos(qW)) * 2;
 
     // 扭转角：把 Y2 按摆动反着转回来（乘摆动矩阵的转置），看它在 Y1、Z1 平面上转了多少

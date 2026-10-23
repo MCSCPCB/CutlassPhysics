@@ -163,9 +163,9 @@ export class SoftContactSolver {
       sp.relativeVelocity = vn;
       if (-vn > approach) approach = -vn;
       const imp = p.impulse;
-      // 多个子步时：靠近速度达到阈值就反弹，持续接触靠落定后速度小排除。单步时持续接触的点不反弹（和原版一样）
+      // 多个子步时：靠近速度达到阈值就反弹，持续接触靠落定后速度小排除。单步时持续接触的点不反弹
       sp.bounce = substepped ? vn <= -bounceThreshold : vn < -bounceThreshold && !p.warmStarted;
-      // 上一步的累积冲量：摩擦存的是世界坐标的向量，投影到这一步的切向上（和原版 warmStart 一样）
+      // 上一步的累积冲量：摩擦存的是世界坐标的向量，投影到这一步的切向上
       sp.impulseN = imp.impulseN * impulseRatio;
       sp.impulseT = (imp.impulseLX * tX + imp.impulseLY * tY + imp.impulseLZ * tZ) * impulseRatio;
       sp.impulseB = (imp.impulseLX * bX + imp.impulseLY * bY + imp.impulseLZ * bZ) * impulseRatio;

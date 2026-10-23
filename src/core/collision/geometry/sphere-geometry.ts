@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/geometry/SphereGeometry.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/geometry/SphereGeometry.hx（MIT，见 Credits.md）
 import { compat } from "../../compat.js";
 import type { Transform } from "../../common/transform.js";
 import type { Vec3 } from "../../common/vec3.js";
@@ -19,7 +19,7 @@ export class SphereGeometry extends ConvexGeometry {
   }
 
   updateMass(): void {
-    // 4π/3 的上游常量，保留原有浮点精度。
+    // 4π/3 的近似常量，保留原有浮点精度。
     this.volume = 4.188790204786386 * this.radius * this.radius * this.radius;
     this.ic00 = 0.4 * this.radius * this.radius;
     this.ic01 = 0;
@@ -60,7 +60,7 @@ export class SphereGeometry extends ConvexGeometry {
     const b = beginX * dX + beginY * dY + beginZ * dZ;
     const D = b * b - a * (beginX * beginX + beginY * beginY + beginZ * beginZ - this.radius * this.radius);
     if (D < 0) return false;
-    // 零长度线段不命中；兼容模式保留上游行为。
+    // 零长度线段不命中；兼容模式跳过此检查。
     if (a === 0 && !compat.keepOimoBugs) return false;
     const t = (-b - Math.sqrt(D)) / a;
     if (t < 0 || t > 1) return false;

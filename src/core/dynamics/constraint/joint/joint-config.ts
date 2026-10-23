@@ -1,8 +1,8 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/JointConfig.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/JointConfig.hx（MIT，见 Credits.md）
 import { Vec3 } from "../../../common/vec3.js";
 import type { RigidBody } from "../../rigidbody/rigid-body.js";
 
-/** 约束求解器的类型，编号和原版一致 */
+/** 约束求解器的类型 */
 export const ConstraintSolverType = {
   /** 迭代求解（PGS） */
   ITERATIVE: 0,
@@ -34,7 +34,7 @@ export class JointConfig {
   }
 }
 
-/** 世界坐标的方向转到刚体的局部坐标（原版 RigidBody.getLocalVectorTo） */
+/** 世界坐标的方向转到刚体的局部坐标 */
 export function toLocalVector(rb: RigidBody, x: number, y: number, z: number, out: Vec3): void {
   const tf = rb.transform;
   out.init(
@@ -44,7 +44,7 @@ export function toLocalVector(rb: RigidBody, x: number, y: number, z: number, ou
   );
 }
 
-/** 世界坐标的点转到刚体的局部坐标（原版 RigidBody.getLocalPointTo） */
+/** 世界坐标的点转到刚体的局部坐标 */
 export function toLocalPoint(rb: RigidBody, x: number, y: number, z: number, out: Vec3): void {
   const tf = rb.transform;
   const dX = x - tf.px, dY = y - tf.py, dZ = z - tf.pz;

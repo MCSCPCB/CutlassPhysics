@@ -1,5 +1,5 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/solver/direct/MassMatrix.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
-// 子矩阵采用通用循环求逆，保留上游运算顺序。
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/solver/direct/MassMatrix.hx（MIT，见 Credits.md）
+// 子矩阵采用通用循环求逆。
 import type { JointSolverInfo, JointSolverMassDataRow } from "../joint/joint-solver-info.js";
 
 /** 关节约束的逆质量矩阵 J·M⁻¹·Jᵀ（直接求解器用），以及按行子集缓存的子矩阵的逆 */
@@ -104,7 +104,7 @@ export class MassMatrix {
         md.invMAng2X = 0; md.invMAng2Y = 0; md.invMAng2Z = 0;
       }
     }
-    // J·(M⁻¹·Jᵀ)：只算上三角，下三角对称。原版宏展开后的括号和项的顺序：lin1 + (ang1) + (lin2) + (ang2)
+    // J·(M⁻¹·Jᵀ)：只算上三角，下三角对称。运算顺序：lin1 + (ang1) + (lin2) + (ang2)
     for (let i = 0; i < numRows; i++) {
       const j1 = info.rows[i].jacobian;
       for (let j = i; j < numRows; j++) {

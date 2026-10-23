@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/solver/pgs/PgsJointConstraintSolver.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/solver/pgs/PgsJointConstraintSolver.hx（MIT，见 Credits.md）
 // 速度和位置求解使用展开的标量运算。
 import { MAX_JACOBIAN_ROWS, POSITION_NGS_BAUMGARTE, POSITION_SPLIT_IMPULSE_BAUMGARTE } from "../../../settings.js";
 import type { TimeStep } from "../../time-step.js";
@@ -45,7 +45,7 @@ export class PgsJointConstraintSolver extends ConstraintSolver {
         md.invMAng1X = 0; md.invMAng1Y = 0; md.invMAng1Z = 0;
         md.invMAng2X = 0; md.invMAng2Y = 0; md.invMAng2Z = 0;
       }
-      // 原版宏展开后的括号：第一项 + (第二项) + (第三项) + (第四项)
+      // 求和顺序：第一项 + (第二项) + (第三项) + (第四项)
       md.massWithoutCfm =
         md.invMLin1X * j.lin1X + md.invMLin1Y * j.lin1Y + md.invMLin1Z * j.lin1Z +
         (md.invMLin2X * j.lin2X + md.invMLin2Y * j.lin2Y + md.invMLin2Z * j.lin2Z) +

@@ -131,7 +131,10 @@ export class Body {
   private prevRot: Quaternion = { x: 0, y: 0, z: 0, w: 1 };
   private userDataValue: unknown;
 
-  /** 由 PhysicsWorld.createBody 创建。@internal */
+  /**
+   * 由 PhysicsWorld.createBody 创建。
+   * @internal
+   */
   constructor(owner: PhysicsWorld, core: RigidBody, userData: unknown) {
     this.owner = owner;
     this.core = core;

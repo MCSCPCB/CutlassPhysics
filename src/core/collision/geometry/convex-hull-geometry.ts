@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/geometry/ConvexHullGeometry.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/geometry/ConvexHullGeometry.hx（MIT，见 Credits.md）
 // 凸包射线检测使用 GJK。
 import type { Transform } from "../../common/transform.js";
 import type { Vec3 } from "../../common/vec3.js";

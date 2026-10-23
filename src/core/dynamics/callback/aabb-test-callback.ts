@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/callback/AabbTestCallback.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/callback/AabbTestCallback.hx（MIT，见 Credits.md）
 import type { Shape } from "../rigidbody/shape.js";
 
 /** World.aabbTest 的回调 */

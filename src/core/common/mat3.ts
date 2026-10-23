@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/common/Mat3.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/common/Mat3.hx（MIT，见 Credits.md）
 // 关节局部坐标系的矩阵存储。
 
 /** 3×3 矩阵，行优先：eRC 是第 R 行第 C 列 */

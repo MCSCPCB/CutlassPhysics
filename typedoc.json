@@ -1,0 +1,37 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "cutlass-physics",
+  "entryPoints": [
+    "src/index.ts"
+  ],
+  "tsconfig": "tsconfig.json",
+  "out": "docs/dist",
+  "hostedBaseUrl": "https://mcscpcb.github.io/CutlassPhysics/",
+  "navigationLinks": {
+    "GitHub": "https://github.com/MCSCPCB/CutlassPhysics"
+  },
+  "lang": "zh",
+  "readme": "none",
+  "includeVersion": false,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "disableSources": true,
+  "searchInComments": true,
+  "navigation": {
+    "includeCategories": false,
+    "includeGroups": true
+  },
+  "sort": [
+    "kind",
+    "source-order"
+  ],
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "treatValidationWarningsAsErrors": true,
+  "jsDocCompatibility": {
+    "exampleTag": false
+  }
+}

@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/gjkepa/{GjkEpa,GjkEpaResultState}.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/gjkepa/{GjkEpa,GjkEpaResultState}.hx（MIT，见 Credits.md）
 //
 // GJK：在两个凸几何体的闵可夫斯基差上迭代一个单纯形，求离原点最近的点，得到两者的距离和最近点。
 // 原点落进单纯形（两者重叠）时，把单纯形补成四面体交给 EPA，求穿透深度和最近点。
@@ -6,7 +6,7 @@
 //
 // 凸体扫掠（convexCastImpl）也是 GJK：沿平移方向一步步推进射线（保守推进），直到单纯形碰到原点。
 //
-// 向量对象预分配，标量运算顺序与上游一致。
+// 向量对象预分配。
 import { Transform } from "../../../common/transform.js";
 import { Vec3 } from "../../../common/vec3.js";
 import type { ConvexGeometry } from "../../geometry/geometry.js";
@@ -16,7 +16,7 @@ import { EpaPolyhedron } from "./epa-polyhedron.js";
 import { GjkCache } from "./gjk-cache.js";
 import { projectOrigin2, projectOrigin3, projectOrigin4 } from "./simplex-util.js";
 
-/** GJK/EPA 的结果状态，编号和原版一致 */
+/** GJK/EPA 的结果状态 */
 export const GjkEpaResultState = {
   SUCCEEDED: 0x000,
   GJK_FAILED_TO_MAKE_TETRAHEDRON: 0x001,
@@ -29,7 +29,7 @@ export const GjkEpaResultState = {
 let instance: GjkEpa | null = null;
 
 export class GjkEpa {
-  /** 共用的实例（原版 GjkEpa.instance）。第一次用到时才创建，import 本库没有副作用 */
+  /** 共用的实例。第一次用到时才创建，import 本库没有副作用 */
   static getInstance(): GjkEpa {
     if (instance === null) instance = new GjkEpa();
     return instance;

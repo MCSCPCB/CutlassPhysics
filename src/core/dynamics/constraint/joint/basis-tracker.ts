@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/BasisTracker.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/BasisTracker.hx（MIT，见 Credits.md）
 // 锚点同步使用展开的标量运算。
 import { compat } from "../../../compat.js";
 import type { Joint } from "./joint.js";
@@ -17,7 +17,7 @@ export class BasisTracker {
     this.joint = joint;
   }
 
-  /** 以两个刚体的 X 轴为准更新坐标系（原版 trackByX） */
+  /** 以两个刚体的 X 轴为准更新坐标系 */
   trackByX(): void {
     const j = this.joint;
     const invM1 = j.b1.invMass, invM2 = j.b2.invMass;

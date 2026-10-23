@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/SphereCapsuleDetector.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/SphereCapsuleDetector.hx（MIT，见 Credits.md）
 import { compat } from "../../compat.js";
 import type { Transform } from "../../common/transform.js";
 import type { CapsuleGeometry } from "../geometry/capsule-geometry.js";

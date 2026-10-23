@@ -1,7 +1,7 @@
 // 移植自 OimoPhysics src/oimo/dynamics/constraint/solver/pgs/PgsContactConstraintSolver.hx
-// 和 solver/common/ContactSolverMassDataRow.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 和 solver/common/ContactSolverMassDataRow.hx（MIT，见 Credits.md）
 // 投影高斯-赛德尔接触求解，使用展开的标量运算。
-// 累加从 0 开始，保留与上游一致的浮点零符号。
+// 累加从 0 开始，保留浮点零的符号。
 import { MAX_MANIFOLD_POINTS, POSITION_SPLIT_IMPULSE_BAUMGARTE } from "../../../settings.js";
 import type { TimeStep } from "../../time-step.js";
 import { ConstraintSolver } from "../constraint-solver.js";
@@ -111,7 +111,7 @@ export class PgsContactConstraintSolver extends ConstraintSolver {
       const impulseB = imp.impulseLX * jb.lin1X + imp.impulseLY * jb.lin1Y + imp.impulseLZ * jb.lin1Z;
       imp.impulseT = impulseT;
       imp.impulseB = impulseB;
-      // 时间步长变化时按比例缩放累积冲量（原版如此：施加的是缩放前的值）
+      // 时间步长变化时按比例缩放累积冲量（施加的是缩放前的值）
       imp.impulseN *= timeStep.dtRatio;
       imp.impulseT *= timeStep.dtRatio;
       imp.impulseB *= timeStep.dtRatio;
@@ -207,7 +207,7 @@ export class PgsContactConstraintSolver extends ConstraintSolver {
     b2.wx = av2X; b2.wy = av2Y; b2.wz = av2Z;
   }
 
-  /** 位置修正前（原版 preSolvePosition + updatePositionData）：刚体已经积分过，重新同步接触点、算法向有效质量 */
+  /** 位置修正前：刚体已经积分过，重新同步接触点、算法向有效质量 */
   preSolvePosition(): void {
     const c = this.constraint, info = this.info;
     c.syncManifold();

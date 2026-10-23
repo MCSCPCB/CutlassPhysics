@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/rigidbody/Shape.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/rigidbody/Shape.hx（MIT，见 Credits.md）
 import type { Proxy } from "../../collision/broadphase/proxy.js";
 import { Aabb } from "../../collision/geometry/aabb.js";
 import type { Geometry } from "../../collision/geometry/geometry.js";
@@ -41,7 +41,7 @@ export class Shape {
   speculativeMargin = 0;
   /** 更新流形前的接触过滤器，供适配层剔除内部接触面。默认不过滤。 */
   contactFilter: ((shape: Shape, result: DetectorResult, first: boolean, other: Shape) => void) | null = null;
-  /** 使用者的数据，内核不读（原版 userData） */
+  /** 使用者的数据，内核不读 */
   userData: unknown = null;
 
   constructor(config: ShapeConfig) {

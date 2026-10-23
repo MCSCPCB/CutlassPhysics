@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/JointImpulse.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/JointImpulse.hx（MIT，见 Credits.md）
 
 /** 关节一行约束的累积冲量，跨步保存用来热启动 */
 export class JointImpulse {

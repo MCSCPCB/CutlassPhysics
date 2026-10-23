@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/contact/ContactConstraint.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/contact/ContactConstraint.hx（MIT，见 Credits.md）
 import type { Transform } from "../../../common/transform.js";
 import {
   CONTACT_ENABLE_BOUNCE_THRESHOLD,
@@ -32,7 +32,7 @@ function setJacobian(j: JacobianRow, dX: number, dY: number, dZ: number, p: Mani
 export class ContactConstraint {
   /** 这一步用的位置修正算法（Contact 按穿透深度选择） */
   positionCorrectionAlgorithm: number = DEFAULT_CONTACT_POSITION_CORRECTION_ALGORITHM;
-  /** true 时恢复系数取两个形状的较大值，false 时取几何平均（原版）。由 ContactManager 在创建接触时设置 */
+  /** true 时恢复系数取两个形状的较大值，false 时取几何平均。由 ContactManager 在创建接触时设置 */
   maxRestitution = false;
   readonly manifold: Manifold;
   s1: Shape | null = null;
@@ -81,7 +81,7 @@ export class ContactConstraint {
     this.tf2 = null;
   }
 
-  /** 速度求解的数据（原版 _getVelocitySolverInfo）：每个没分开的接触点一行 */
+  /** 速度求解的数据：每个没分开的接触点一行 */
   getVelocitySolverInfo(timeStep: TimeStep, info: ContactSolverInfo): void {
     const b1 = this.b1!, b2 = this.b2!, m = this.manifold;
     info.b1 = b1;
@@ -130,7 +130,7 @@ export class ContactConstraint {
     }
   }
 
-  /** 位置修正（split impulse）的数据（原版 _getPositionSolverInfo）：每个点只有法向一行 */
+  /** 位置修正（split impulse）的数据：每个点只有法向一行 */
   getPositionSolverInfo(info: ContactSolverInfo): void {
     const m = this.manifold;
     info.b1 = this.b1;

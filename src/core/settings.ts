@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/common/Setting.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/common/Setting.hx（MIT，见 Credits.md）
 // 模拟参数，默认值与 OimoPhysics 一致。
 import { PositionCorrectionAlgorithm } from "./dynamics/constraint/position-correction-algorithm.js";
 
@@ -13,7 +13,7 @@ export const CONTACT_PERSISTENCE_THRESHOLD = 0.05;
 
 /** GJK 默认外边距（米） */
 export const DEFAULT_GJK_MARGIN = 0.05;
-/** GJK 是否从上一步的结果开始迭代（原版 enableGJKCaching） */
+/** GJK 是否从上一步的结果开始迭代 */
 export const ENABLE_GJK_CACHING = true;
 
 export const DEFAULT_FRICTION = 0.2;
@@ -25,7 +25,7 @@ export const DEFAULT_COLLISION_MASK = 1;
 
 /** 每步最大位移（米），超过时按比例压低速度 */
 export const MAX_TRANSLATION_PER_STEP = 20;
-/** 每步最大转角，单位为弧度，使用上游的截断 π 常量。 */
+/** 每步最大转角，单位为弧度，使用截断 π 常量。 */
 export const MAX_ROTATION_PER_STEP = 3.14159265358979;
 
 /** 速度低于这些阈值并持续 SLEEPING_TIME_THRESHOLD 秒后刚体进入休眠 */
@@ -66,7 +66,7 @@ export const JOINT_WARM_STARTING_FACTOR = 0.95;
 export const MIN_SPRING_DAMPER_DAMPING_RATIO = 1e-6;
 /** 一个关节最多几行约束（3 个平移 + 3 个旋转） */
 export const MAX_JACOBIAN_ROWS = 6;
-/** 关节角度限制的容差，单位为弧度，对应上游截断 π 计算的 1°。 */
+/** 关节角度限制的容差，单位为弧度，对应截断 π 计算的 1°。 */
 export const ANGULAR_SLOP = 0.017453292519943278;
 /** 布娃娃关节摆动锥的最小半角（弧度），设得更小时按这个算 */
 export const MIN_RAGDOLL_MAX_SWING_ANGLE = 1e-6;

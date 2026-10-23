@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/{Contact,ContactLink}.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/{Contact,ContactLink}.hx（MIT，见 Credits.md）
 import { CachedDetectorData } from "../collision/narrowphase/cached-detector-data.js";
 import type { Detector } from "../collision/narrowphase/detector.js";
 import { DetectorResult } from "../collision/narrowphase/detector-result.js";

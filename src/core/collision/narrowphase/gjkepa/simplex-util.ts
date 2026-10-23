@@ -1,8 +1,8 @@
-// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/gjkepa/SimplexUtil.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/gjkepa/SimplexUtil.hx（MIT，见 Credits.md）
 //
 // 把原点投影到单纯形（线段、三角形、四面体）上，求离原点最近的点，并返回它所在的 Voronoi 区域。
 // 区域用位掩码表示：第 i 位为 1 表示最近点用到了第 i 个顶点（例如 0b011 = 前两个顶点组成的边）。
-// out 必须与输入向量不同；标量运算顺序与上游一致。
+// out 必须与输入向量不同。
 import type { Vec3 } from "../../../common/vec3.js";
 
 /** 线段 (vec1, vec2) 上离原点最近的点 */

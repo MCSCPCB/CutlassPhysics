@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/GjkEpaDetector.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/GjkEpaDetector.hx（MIT，见 Credits.md）
 import type { Transform } from "../../common/transform.js";
 import { ENABLE_GJK_CACHING } from "../../settings.js";
 import type { ConvexGeometry, Geometry } from "../geometry/geometry.js";

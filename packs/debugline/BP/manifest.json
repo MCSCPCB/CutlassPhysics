@@ -1,0 +1,23 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Cutlass 行为包",
+    "description": "基于 Debugline 的物理场景演示，需要开启实验玩法",
+    "uuid": "92a5447c-2287-4848-a520-b715804c5429",
+    "version": [0, 0, 1],
+    "min_engine_version": [1, 26, 0]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "ab94b2a0-f1a7-4218-8f4b-df13f6572937",
+      "version": [0, 0, 1],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    { "module_name": "@minecraft/server", "version": "beta" },
+    { "module_name": "@minecraft/debug-utilities", "version": "beta" }
+  ]
+}

@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/{SphericalJoint,SphericalJointConfig}.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/{SphericalJoint,SphericalJointConfig}.hx（MIT，见 Credits.md）
 import type { RigidBody } from "../../rigidbody/rigid-body.js";
 import type { TimeStep } from "../../time-step.js";
 import { JointConfig } from "./joint-config.js";
@@ -43,7 +43,7 @@ export class SphericalJoint extends Joint {
     }
     const linRhsX = errorX * erp, linRhsY = errorY * erp, linRhsZ = errorZ * erp;
     // 角度部分是锚点相对位置的叉乘矩阵取负的各行：-[r]× = [[0, r.z, -r.y], [-r.z, 0, r.x], [r.y, -r.x, 0]]
-    // 对角线是 -0（原版先构造叉乘矩阵再整体取负）
+    // 对角线是 -0（叉乘矩阵整体取负）
     const r1X = this.ra1X, r1Y = this.ra1Y, r1Z = this.ra1Z;
     const r2X = this.ra2X, r2Y = this.ra2Y, r2Z = this.ra2Z;
 

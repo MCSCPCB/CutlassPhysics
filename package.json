@@ -3,7 +3,6 @@
   "version": "0.0.0",
   "private": true,
   "description": "面向 Minecraft 基岩版 Script API 的刚体物理库",
-  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {
@@ -15,20 +14,25 @@
   "types": "./dist/types/index.d.ts",
   "files": [
     "dist",
-    "THIRD-PARTY-NOTICES.txt"
+    "Credits.md"
   ],
   "sideEffects": false,
   "scripts": {
     "build": "node build.mjs && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json && tsc -p examples/tsconfig.json",
-    "check": "npm run typecheck && npm run build"
+    "docs": "typedoc",
+    "pack:sync": "node build.mjs --sync-pack",
+    "check": "npm run typecheck && node build.mjs --check-pack && tsc -p tsconfig.build.json && npm run docs"
   },
   "peerDependencies": {
     "@minecraft/server": "*"
   },
   "devDependencies": {
+    "@minecraft/debug-utilities": "1.0.0-beta.1.26.52-stable",
     "@minecraft/server": "2.10.0",
     "esbuild": "0.28.2",
+    "typedoc": "0.28.20",
     "typescript": "6.0.3"
-  }
+  },
+  "license": "MIT"
 }

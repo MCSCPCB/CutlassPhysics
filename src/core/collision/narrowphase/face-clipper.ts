@@ -1,5 +1,5 @@
 // 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/BoxBoxDetector.hx 中的
-// IncidentVertex 和 FaceClipper（原版是该文件的私有类）（MIT，见 THIRD-PARTY-NOTICES.txt）
+// IncidentVertex 和 FaceClipper（MIT，见 Credits.md）
 // 把入射面（四边形）裁剪进参考面矩形 [-w, w] × [-h, h]，最多得到 8 个点，再精简到 4 个。
 // 四边裁剪直接访问顶点字段，减少函数调用开销。
 
@@ -86,7 +86,7 @@ export class FaceClipper {
       if (dot2 > max2) { max2 = dot2; max2V = v; }
       if (dot2 < min2) { min2 = dot2; min2V = v; }
     }
-    // 按原版顺序放进另一个缓冲区，再交换
+    // 按顺序放进另一个缓冲区，再交换
     const dst = this.tmpVertices;
     copyVertex(dst[0], max1V);
     copyVertex(dst[1], max2V);
@@ -98,7 +98,7 @@ export class FaceClipper {
   }
 
   /**
-   * 用一条边裁剪一遍，结果写进另一个缓冲区再交换（原版的 clipL/R/T/B + flip）。
+   * 用一条边裁剪一遍，结果写进另一个缓冲区再交换。
    * 顶点到边的有向距离是 negate ? bound - c : bound + c（c 是顶点的 x 或 y），正数表示在内侧。
    */
   private clipPass(bound: number, useY: boolean, negate: boolean): void {

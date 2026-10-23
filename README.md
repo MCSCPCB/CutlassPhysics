@@ -2,6 +2,8 @@
 
 一个用于 Minecraft 基岩版 Script API 的 3D 刚体物理库
 
+[API 文档](https://mcscpcb.github.io/CutlassPhysics/)
+
 ## 特性
 
 - **方块碰撞** — 支持楼梯、栅栏、门等方块的碰撞检测与响应
@@ -39,4 +41,4 @@ physics.afterEvents.stepEnd.subscribe(() => {
 
 ## 许可证
 
-[MIT](LICENSE)。
+[MIT](LICENSE)

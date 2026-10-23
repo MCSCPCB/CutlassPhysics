@@ -1,5 +1,5 @@
 // 移植自 OimoPhysics src/oimo/dynamics/constraint/info/joint/{JointSolverInfo,JointSolverInfoRow}.hx、
-// src/oimo/dynamics/constraint/solver/common/JointSolverMassDataRow.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// src/oimo/dynamics/constraint/solver/common/JointSolverMassDataRow.hx（MIT，见 Credits.md）
 import { MAX_JACOBIAN_ROWS } from "../../../settings.js";
 import type { RigidBody } from "../../rigidbody/rigid-body.js";
 import { JacobianRow } from "../contact/contact-solver-info.js";

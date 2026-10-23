@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/gjkepa/EpaVertex.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/gjkepa/EpaVertex.hx（MIT，见 Credits.md）
 import { Vec3 } from "../../../common/vec3.js";
 import type { EpaTriangle } from "./epa-triangle.js";
 

@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/rigidbody/RigidBody.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/rigidbody/RigidBody.hx（MIT，见 Credits.md）
 import { Transform } from "../../common/transform.js";
 import { compat } from "../../compat.js";
 import { MAX_ROTATION_PER_STEP, MAX_TRANSLATION_PER_STEP } from "../../settings.js";
@@ -94,7 +94,7 @@ export class RigidBody {
     this.angularDamping = config.angularDamping;
   }
 
-  /** 按速度积分一步（原版 _integrate）。静态刚体只把速度清零 */
+  /** 按速度积分一步。静态刚体只把速度清零 */
   integrate(dt: number): void {
     if (this.type === RigidBodyType.STATIC) {
       this.vx = 0; this.vy = 0; this.vz = 0;
@@ -125,7 +125,7 @@ export class RigidBody {
     this.applyRotation(rX, rY, rZ);
   }
 
-  /** 按位置修正得到的伪速度移动刚体（原版 _integratePseudoVelocity），然后清零伪速度 */
+  /** 按位置修正得到的伪速度移动刚体，然后清零伪速度 */
   integratePseudoVelocity(): void {
     const pLenSq = this.pvx * this.pvx + this.pvy * this.pvy + this.pvz * this.pvz;
     const aLenSq = this.pwx * this.pwx + this.pwy * this.pwy + this.pwz * this.pwz;
@@ -141,7 +141,7 @@ export class RigidBody {
     this.applyRotation(rX, rY, rZ);
   }
 
-  /** 绕旋转向量 (rX, rY, rZ) 转动（原版 _applyRotation），然后更新世界逆惯性张量 */
+  /** 绕旋转向量 (rX, rY, rZ) 转动，然后更新世界逆惯性张量 */
   applyRotation(rX: number, rY: number, rZ: number): void {
     // 旋转向量 → 四元数增量 dq。小角度用麦克劳林展开
     const theta = Math.sqrt(rX * rX + rY * rY + rZ * rZ);
@@ -192,7 +192,7 @@ export class RigidBody {
     }
     // q = dq · q
     if (compat.keepOimoBugs) {
-      // 原版 quat_mul 宏没有用临时变量，后面的分量会读到已经更新过的 qX、qY、qZ，转角会被略微放大
+      // 兼容模式下的四元数乘法没有用临时变量，后面的分量会读到已经更新过的 qX、qY、qZ，转角会被略微放大
       qX = dqW * qX + dqX * qW + dqY * qZ - dqZ * qY;
       qY = dqW * qY - dqX * qZ + dqY * qW + dqZ * qX;
       qZ = dqW * qZ + dqX * qY - dqY * qX + dqZ * qW;
@@ -219,7 +219,7 @@ export class RigidBody {
     this.updateInvInertia();
   }
 
-  /** 根据形状重算质量和惯性张量（原版 updateMass），然后唤醒刚体 */
+  /** 根据形状重算质量和惯性张量，然后唤醒刚体 */
   updateMass(): void {
     let totalMass = 0;
     let i00 = 0, i01 = 0, i02 = 0, i10 = 0, i11 = 0, i12 = 0, i20 = 0, i21 = 0, i22 = 0;
@@ -270,12 +270,12 @@ export class RigidBody {
     this.wakeUp();
   }
 
-  /** 由 mass 和局部惯性张量算出逆质量、逆惯性张量（原版 completeMassData） */
+  /** 由 mass 和局部惯性张量算出逆质量、逆惯性张量 */
   private completeMassData(): void {
     const e00 = this.li00, e01 = this.li01, e02 = this.li02;
     const e10 = this.li10, e11 = this.li11, e12 = this.li12;
     const e20 = this.li20, e21 = this.li21, e22 = this.li22;
-    // 余子式和行列式（原版 mat3_det、mat3_inv）
+    // 余子式和行列式
     const d00 = e11 * e22 - e12 * e21;
     const d01 = e10 * e22 - e12 * e20;
     const d02 = e10 * e21 - e11 * e20;
@@ -312,7 +312,7 @@ export class RigidBody {
     this.updateInvInertia();
   }
 
-  /** 世界逆惯性张量 = R · ili · Rᵀ，再按行乘 rotFactor（原版 updateInvInertia） */
+  /** 世界逆惯性张量 = R · ili · Rᵀ，再按行乘 rotFactor */
   updateInvInertia(): void {
     const r = this.transform;
     const a00 = r.r00 * this.ili00 + r.r01 * this.ili10 + r.r02 * this.ili20;
@@ -336,7 +336,7 @@ export class RigidBody {
     this.ii22 = (a20 * r.r20 + a21 * r.r21 + a22 * r.r22) * z;
   }
 
-  /** 外部直接改了变换后调用（原版 updateTransformExt） */
+  /** 外部直接改了变换后调用 */
   updateTransformExt(): void {
     this.ptransform.copyFrom(this.transform);
     this.syncShapes();
@@ -371,14 +371,14 @@ export class RigidBody {
     for (let s = this.shapeList; s !== null; s = s.next) s.syncSpeculative(this.ptransform, this.transform, base, max, linearReach, angularSpeed, t);
   }
 
-  /** 位置修正：沿位置冲量平移（原版 _applyLinearPositionImpulse） */
+  /** 位置修正：沿位置冲量平移 */
   applyLinearPositionImpulse(ix: number, iy: number, iz: number): void {
     this.transform.px += ix * this.invMass;
     this.transform.py += iy * this.invMass;
     this.transform.pz += iz * this.invMass;
   }
 
-  /** 位置修正：按角位置冲量转动（原版 _applyAngularPositionImpulse） */
+  /** 位置修正：按角位置冲量转动 */
   applyAngularPositionImpulse(ix: number, iy: number, iz: number): void {
     this.applyRotation(
       this.ii00 * ix + this.ii01 * iy + this.ii02 * iz,
@@ -387,7 +387,7 @@ export class RigidBody {
     );
   }
 
-  /** 速度低于休眠阈值（原版 _isSleepy） */
+  /** 速度低于休眠阈值 */
   isSleepy(): boolean {
     return (
       this.autoSleep &&
@@ -397,14 +397,14 @@ export class RigidBody {
     );
   }
 
-  /** 平移（原版 _applyTranslation，NGS 位置修正用） */
+  /** 平移（NGS 位置修正用） */
   applyTranslation(tX: number, tY: number, tZ: number): void {
     this.transform.px += tX;
     this.transform.py += tY;
     this.transform.pz += tZ;
   }
 
-  /** 没有任何接触和关节（原版 _isAlone） */
+  /** 没有任何接触和关节 */
   isAlone(): boolean {
     return this.numContactLinks === 0 && this.numJointLinks === 0;
   }
@@ -464,7 +464,7 @@ export class RigidBody {
     shape.rigidBody = null;
   }
 
-  /** 在世界坐标 (px, py, pz) 处施加冲量：改变线速度和角速度，并唤醒刚体（原版 applyImpulse） */
+  /** 在世界坐标 (px, py, pz) 处施加冲量：改变线速度和角速度，并唤醒刚体 */
   applyImpulseAt(ix: number, iy: number, iz: number, px: number, py: number, pz: number): void {
     this.vx += ix * this.invMass;
     this.vy += iy * this.invMass;
@@ -483,7 +483,7 @@ export class RigidBody {
     this.speculativeStale = true;
   }
 
-  /** 在重心施加冲量，不改变角速度（原版 applyLinearImpulse） */
+  /** 在重心施加冲量，不改变角速度 */
   applyLinearImpulse(ix: number, iy: number, iz: number): void {
     this.vx += ix * this.invMass;
     this.vy += iy * this.invMass;
@@ -493,7 +493,7 @@ export class RigidBody {
     this.speculativeStale = true;
   }
 
-  /** 施加角冲量，不改变线速度（原版 applyAngularImpulse） */
+  /** 施加角冲量，不改变线速度 */
   applyAngularImpulse(ix: number, iy: number, iz: number): void {
     this.wx += this.ii00 * ix + this.ii01 * iy + this.ii02 * iz;
     this.wy += this.ii10 * ix + this.ii11 * iy + this.ii12 * iz;
@@ -503,7 +503,7 @@ export class RigidBody {
     this.speculativeStale = true;
   }
 
-  /** 在世界坐标 (px, py, pz) 处施力，累加到下一步，每步结束后清零（原版 applyForce） */
+  /** 在世界坐标 (px, py, pz) 处施力，累加到下一步，每步结束后清零 */
   applyForceAt(fx: number, fy: number, fz: number, px: number, py: number, pz: number): void {
     this.fx += fx;
     this.fy += fy;
@@ -518,7 +518,7 @@ export class RigidBody {
     this.sleepTime = 0;
   }
 
-  /** 在重心施力（原版 applyForceToCenter） */
+  /** 在重心施力 */
   applyForceToCenter(fx: number, fy: number, fz: number): void {
     this.fx += fx;
     this.fy += fy;
@@ -527,7 +527,7 @@ export class RigidBody {
     this.sleepTime = 0;
   }
 
-  /** 施加力矩，累加到下一步（原版 applyTorque） */
+  /** 施加力矩，累加到下一步 */
   applyTorque(tx: number, ty: number, tz: number): void {
     this.tx += tx;
     this.ty += ty;

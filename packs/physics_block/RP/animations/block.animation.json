@@ -1,0 +1,98 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.cutlass.block.rotation": {
+      "loop": true,
+      "bones": {
+        "root": {
+          "rotation": [
+            "-q.body_x_rotation",
+            "-q.body_y_rotation",
+            0
+          ],
+          "scale": "v.pose_ready"
+        },
+        "pitch": {
+          "rotation": [
+            "v.pitch",
+            0,
+            0
+          ]
+        },
+        "roll": {
+          "rotation": [
+            0,
+            0,
+            "-v.roll"
+          ]
+        },
+        "yaw": {
+          "rotation": [
+            0,
+            "-v.yaw",
+            0
+          ],
+          "position": [
+            "v.pose_px*16",
+            "v.pose_py*16",
+            "-v.pose_pz*16"
+          ]
+        },
+        "local_offset": {
+          "position": [
+            "v.local_x * 16",
+            "v.local_y * 16",
+            "-v.local_z * 16"
+          ]
+        },
+        "local_pitch": {
+          "rotation": [
+            "v.local_pitch",
+            0,
+            0
+          ]
+        },
+        "local_roll": {
+          "rotation": [
+            0,
+            0,
+            "-v.local_roll"
+          ]
+        },
+        "local_yaw": {
+          "rotation": [
+            0,
+            "-v.local_yaw",
+            0
+          ]
+        }
+      }
+    },
+    "animation.cutlass.block.scale": {
+      "loop": true,
+      "bones": {
+        "root": {
+          "scale": "v.pose_ready"
+        }
+      }
+    },
+    "animation.cutlass.block.item_scale": {
+      "loop": true,
+      "bones": {
+        "model": {
+          "position": [
+            -10.865,
+            10.82,
+            10.865
+          ],
+          "scale": 2.6663,
+          "rotation": [
+            -20,
+            -45,
+            0
+          ]
+        }
+      }
+    }
+  }
+}

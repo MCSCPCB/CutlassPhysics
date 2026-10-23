@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/contact/ManifoldPoint.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/contact/ManifoldPoint.hx（MIT，见 Credits.md）
 import type { DetectorResultPoint } from "../../../collision/narrowphase/detector-result.js";
 import type { Transform } from "../../../common/transform.js";
 import { ContactImpulse } from "./contact-impulse.js";
@@ -36,7 +36,7 @@ export class ManifoldPoint {
     this.id = -1;
   }
 
-  /** 用检测结果初始化（原版 _initialize） */
+  /** 用检测结果初始化 */
   initialize(r: DetectorResultPoint, tf1: Transform, tf2: Transform): void {
     this.p1X = r.p1x; this.p1Y = r.p1y; this.p1Z = r.p1z;
     this.p2X = r.p2x; this.p2Y = r.p2y; this.p2Z = r.p2z;
@@ -56,7 +56,7 @@ export class ManifoldPoint {
     this.disabled = false;
   }
 
-  /** 用新的检测结果更新位置和深度，保留冲量、编号（原版 _updateDepthAndPositions，增量更新用） */
+  /** 用新的检测结果更新位置和深度，保留冲量、编号（增量更新用） */
   updateDepthAndPositions(r: DetectorResultPoint, tf1: Transform, tf2: Transform): void {
     this.p1X = r.p1x; this.p1Y = r.p1y; this.p1Z = r.p1z;
     this.p2X = r.p2x; this.p2Y = r.p2y; this.p2Z = r.p2z;
@@ -71,7 +71,7 @@ export class ManifoldPoint {
     this.depth = r.depth;
   }
 
-  /** 复制另一个点（原版 _copyFrom）。disabled 总是清掉 */
+  /** 复制另一个点。disabled 总是清掉 */
   copyFrom(cp: ManifoldPoint): void {
     this.lp1X = cp.lp1X; this.lp1Y = cp.lp1Y; this.lp1Z = cp.lp1Z;
     this.lp2X = cp.lp2X; this.lp2Y = cp.lp2Y; this.lp2Z = cp.lp2Z;

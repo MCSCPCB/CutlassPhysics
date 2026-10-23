@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/solver/direct/{Boundary,BoundaryBuildInfo,BoundaryBuilder,BoundarySelector}.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/solver/direct/{Boundary,BoundaryBuildInfo,BoundaryBuilder,BoundarySelector}.hx（MIT，见 Credits.md）
 import { DIRECT_MLCP_SOLVER_EPS } from "../../../settings.js";
 import type { JointSolverInfo } from "../joint/joint-solver-info.js";
 import type { MassMatrix } from "./mass-matrix.js";

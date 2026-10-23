@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/geometry/Aabb.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/geometry/Aabb.hx（MIT，见 Credits.md）
 // 轴对齐包围盒。
 export class Aabb {
   minX = 0;

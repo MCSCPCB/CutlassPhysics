@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/Detector.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/Detector.hx（MIT，见 Credits.md）
 import type { Transform } from "../../common/transform.js";
 import type { Geometry } from "../geometry/geometry.js";
 import type { CachedDetectorData } from "./cached-detector-data.js";

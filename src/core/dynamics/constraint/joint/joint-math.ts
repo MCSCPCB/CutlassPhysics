@@ -1,8 +1,8 @@
-// 移植自 OimoPhysics src/oimo/m/M.hx 里关节用到的宏：quat_arc、vec3_perp、mat3_fromQuat（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/m/M.hx 里关节用到的宏：quat_arc、vec3_perp、mat3_fromQuat（MIT，见 Credits.md）
 // 关节初始化的数学运算，结果写入预分配对象。
 // 每步都跑的 BasisTracker 里把同样的计算展开成了标量。
 
-/** 和 v 垂直的单位向量（原版 vec3_perp）：去掉绝对值最小的分量，另外两个交换、取负再归一化 */
+/** 和 v 垂直的单位向量：去掉绝对值最小的分量，另外两个交换、取负再归一化 */
 export const PERP = { x: 0, y: 0, z: 0 };
 export function perp(x1: number, y1: number, z1: number): void {
   const x2 = x1 * x1, y2 = y1 * y1, z2 = z1 * z1;
@@ -24,7 +24,7 @@ export function perp(x1: number, y1: number, z1: number): void {
   }
 }
 
-/** 把单位向量 u 转到单位向量 v 的最短旋转（原版 quat_arc），结果放在 ARC */
+/** 把单位向量 u 转到单位向量 v 的最短旋转，结果放在 ARC */
 export const ARC = { x: 0, y: 0, z: 0, w: 0 };
 export function arc(ux: number, uy: number, uz: number, vx: number, vy: number, vz: number): void {
   let d = ux * vx + uy * vy + uz * vz;
@@ -41,7 +41,7 @@ export function arc(ux: number, uy: number, uz: number, vx: number, vy: number, 
   }
 }
 
-/** 四元数转旋转矩阵（原版 mat3_fromQuat），结果放在 ROT（行优先 m00..m22） */
+/** 四元数转旋转矩阵，结果放在 ROT（行优先 m00..m22） */
 export const ROT = { m00: 0, m01: 0, m02: 0, m10: 0, m11: 0, m12: 0, m20: 0, m21: 0, m22: 0 };
 export function mat3FromQuat(x: number, y: number, z: number, w: number): void {
   const x2 = 2 * x, y2 = 2 * y, z2 = 2 * z;

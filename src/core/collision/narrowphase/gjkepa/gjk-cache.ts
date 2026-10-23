@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/gjkepa/GjkCache.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/gjkepa/GjkCache.hx（MIT，见 Credits.md）
 import { Vec3 } from "../../../common/vec3.js";
 
 /** 上次 GJK 搜索方向，供后续迭代热启动。 */

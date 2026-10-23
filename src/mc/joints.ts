@@ -331,7 +331,10 @@ export class Joint {
   private readonly kind: JointOptions["type"];
   private valid = true;
 
-  /** 由 PhysicsWorld.createJoint 创建。@internal */
+  /**
+   * 由 PhysicsWorld.createJoint 创建。
+   * @internal
+   */
   constructor(owner: PhysicsWorld, core: CoreJoint, a: Body, b: Body, kind: JointOptions["type"]) {
     this.owner = owner;
     this.core = core;

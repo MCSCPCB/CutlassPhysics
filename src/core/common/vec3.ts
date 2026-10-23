@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/common/Vec3.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/common/Vec3.hx（MIT，见 Credits.md）
 // GJK/EPA 使用预分配向量对象，接触求解使用标量字段。
 
 /** 三维向量 */
@@ -34,7 +34,7 @@ export class Vec3 {
     return this;
   }
 
-  // xxxEq 方法原地更新向量，运算顺序与上游一致。
+  // xxxEq 方法原地更新向量。
 
   addEq(v: Vec3): this {
     return this.init(this.x + v.x, this.y + v.y, this.z + v.z);

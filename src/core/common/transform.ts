@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/common/Transform.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/common/Transform.hx（MIT，见 Credits.md）
 // 以标量字段保存平移和旋转矩阵。
 // rIJ 是旋转矩阵第 I 行第 J 列；第 J 列是局部坐标系第 J 根轴在世界坐标里的方向。
 export class Transform {
@@ -27,7 +27,7 @@ export class Transform {
 }
 
 /**
- * 变换组合（原版 transform_mul 宏）：先做 local，再做 parent。
+ * 变换组合：先做 local，再做 parent。
  * 旋转 = R_parent · R_local，位置 = R_parent · p_local + p_parent。dst 不能和输入是同一个对象。
  */
 export function transformMul(dst: Transform, local: Transform, parent: Transform): void {

@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/geometry/CylinderGeometry.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/geometry/CylinderGeometry.hx（MIT，见 Credits.md）
 import type { Transform } from "../../common/transform.js";
 import type { Vec3 } from "../../common/vec3.js";
 import type { Aabb } from "./aabb.js";
@@ -20,7 +20,7 @@ export class CylinderGeometry extends ConvexGeometry {
   updateMass(): void {
     const r2 = this.radius * this.radius;
     const h2 = this.halfHeight * this.halfHeight * 4;
-    // π 用原版截断的常数
+    // π 用截断的常数
     this.volume = 3.14159265358979 * r2 * this.halfHeight * 2;
     this.ic00 = (1 / 12) * (3 * r2 + h2);
     this.ic01 = 0;

@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/contact/Manifold.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/contact/Manifold.hx（MIT，见 Credits.md）
 import type { Transform } from "../../../common/transform.js";
 import { MAX_MANIFOLD_POINTS } from "../../../settings.js";
 import { ManifoldPoint } from "./manifold-point.js";
@@ -21,12 +21,12 @@ export class Manifold {
     this.numPoints = 0;
   }
 
-  /** 由法线构造正交基（原版 _buildBasis）：用法线分量最小的那根轴构造切向，数值最稳 */
+  /** 由法线构造正交基：用法线分量最小的那根轴构造切向，数值最稳 */
   buildBasis(nx: number, ny: number, nz: number): void {
     this.nX = nx; this.nY = ny; this.nZ = nz;
     const nx2 = nx * nx, ny2 = ny * ny, nz2 = nz * nz;
     let tx: number, ty: number, tz: number, bx: number, by: number, bz: number;
-    // 原版 compare3min：a < b 时比较 a、c，否则比较 b、c
+    // 最小分量判断：a < b 时比较 a、c，否则比较 b、c
     const axis = nx2 < ny2 ? (nx2 < nz2 ? 0 : 2) : ny2 < nz2 ? 1 : 2;
     if (axis === 0) {
       const invL = 1 / Math.sqrt(ny2 + nz2);
@@ -45,7 +45,7 @@ export class Manifold {
     this.bX = bx; this.bY = by; this.bZ = bz;
   }
 
-  /** 刚体移动后，按局部坐标重新算接触点的世界位置和深度（原版 _updateDepthsAndPositions） */
+  /** 刚体移动后，按局部坐标重新算接触点的世界位置和深度 */
   updateDepthsAndPositions(tf1: Transform, tf2: Transform): void {
     for (let i = 0; i < this.numPoints; i++) {
       const p = this.points[i];

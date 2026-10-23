@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/geometry/CapsuleGeometry.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/geometry/CapsuleGeometry.hx（MIT，见 Credits.md）
 import { compat } from "../../compat.js";
 import type { Transform } from "../../common/transform.js";
 import type { Vec3 } from "../../common/vec3.js";
@@ -24,7 +24,7 @@ export class CapsuleGeometry extends ConvexGeometry {
   }
 
   updateMass(): void {
-    // 圆柱部分 + 两端合起来的一个球；π 用原版截断的常数
+    // 圆柱部分 + 两端合起来的一个球；π 用截断的常数
     const r2 = this.radius * this.radius;
     const hh2 = this.halfHeight * this.halfHeight;
     const cylinderVolume = 6.28318530717958 * r2 * this.halfHeight;
@@ -102,7 +102,7 @@ export class CapsuleGeometry extends ConvexGeometry {
       if (tminxz > 0) {
         const min = tminxz;
         const nx = beginX + dx * min, nz = beginZ + dz * min;
-        // 法线是 (x, 0, z) 归一化；原版先求长度（变量名叫 invLen），大于 0 才取倒数
+        // 法线是 (x, 0, z) 归一化；先求长度（变量名叫 invLen），大于 0 才取倒数
         let invLen = Math.sqrt(nx * nx + 0 * 0 + nz * nz);
         if (invLen > 0) invLen = 1 / invLen;
         hit.normalX = nx * invLen;
@@ -129,7 +129,7 @@ export class CapsuleGeometry extends ConvexGeometry {
     c = sbX * sbX + sbY * sbY + sbZ * sbZ - this.radius * this.radius;
     D = b * b - a * c;
     if (D < 0) return false;
-    // 零长度线段不命中；兼容模式保留上游行为。
+    // 零长度线段不命中；兼容模式跳过此检查。
     if (a === 0 && !compat.keepOimoBugs) return false;
     const t = (-b - Math.sqrt(D)) / a;
     if (t < 0 || t > 1) return false;

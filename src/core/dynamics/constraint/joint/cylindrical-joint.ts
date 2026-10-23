@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/{CylindricalJoint,CylindricalJointConfig}.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/{CylindricalJoint,CylindricalJointConfig}.hx（MIT，见 Credits.md）
 import { Vec3 } from "../../../common/vec3.js";
 import type { RigidBody } from "../../rigidbody/rigid-body.js";
 import type { TimeStep } from "../../time-step.js";
@@ -124,7 +124,7 @@ export class CylindricalJoint extends Joint {
     j.ang2X = b.zX; j.ang2Y = b.zY; j.ang2Z = b.zZ;
   }
 
-  /** 同步锚点和坐标系，然后更新公共坐标系、转角、位移和偏差（原版 _syncAnchors + computeErrors） */
+  /** 同步锚点和坐标系，然后更新公共坐标系、转角、位移和偏差 */
   override syncAnchors(): void {
     super.syncAnchors();
     const b = this.basis;
@@ -135,7 +135,7 @@ export class CylindricalJoint extends Joint {
     let errY = this.bX1Z * this.bX2X - this.bX1X * this.bX2Z;
     let errZ = this.bX1X * this.bX2Y - this.bX1Y * this.bX2X;
     let cos = this.bX1X * this.bX2X + this.bX1Y * this.bX2Y + this.bX1Z * this.bX2Z;
-    // 原版 safeAcos：超出 [-1, 1] 时取端点（原版的 π 是截断的 3.14159265358979）
+    // 反余弦：超出 [-1, 1] 时取端点（π 是截断的 3.14159265358979）
     const theta = cos <= -1 ? 3.14159265358979 : cos >= 1 ? 0 : Math.acos(cos);
     let l = errX * errX + errY * errY + errZ * errZ;
     if (l > 0) l = 1 / Math.sqrt(l);

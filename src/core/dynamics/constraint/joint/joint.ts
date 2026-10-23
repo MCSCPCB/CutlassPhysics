@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/{Joint,JointType,JointMacro}.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/{Joint,JointType,JointMacro}.hx（MIT，见 Credits.md）
 import { ANGULAR_SLOP, LINEAR_SLOP, MIN_SPRING_DAMPER_DAMPING_RATIO, MAX_JACOBIAN_ROWS, VELOCITY_BAUMGARTE, JOINT_WARM_STARTING_FACTOR, JOINT_WARM_STARTING_FACTOR_FOR_BAUMGARTE, DEFAULT_JOINT_POSITION_CORRECTION_ALGORITHM } from "../../../settings.js";
 import type { RigidBody } from "../../rigidbody/rigid-body.js";
 import type { TimeStep } from "../../time-step.js";
@@ -17,7 +17,7 @@ import type { RotationalLimitMotor } from "./rotational-limit-motor.js";
 import type { SpringDamper } from "./spring-damper.js";
 import type { TranslationalLimitMotor } from "./translational-limit-motor.js";
 
-/** 关节类型，编号和原版一致 */
+/** 关节类型 */
 export const JointType = {
   SPHERICAL: 0,
   REVOLUTE: 1,
@@ -29,12 +29,12 @@ export const JointType = {
 } as const;
 
 /**
- * 软约束的参数（原版 JointMacro.computeSoftConstraintParameters）：由弹簧频率、阻尼比算出 CFM 系数和 ERP，
+ * 软约束的参数：由弹簧频率、阻尼比算出 CFM 系数和 ERP，
  * 写到 SOFT 里（不 new 对象）。CFM = CFM 系数 / 质量
  */
 export const SOFT = { cfmFactor: 0, erp: 0 };
 export function computeSoftConstraintParameters(frequency: number, dampingRatio: number, dt: number, useSymplecticEuler: boolean): void {
-  // 原版的 π 是截断的 3.14159265358979
+  // π 是截断的 3.14159265358979
   const omega = 2 * 3.14159265358979 * frequency;
   let zeta = dampingRatio;
   if (zeta < MIN_SPRING_DAMPER_DAMPING_RATIO) zeta = MIN_SPRING_DAMPER_DAMPING_RATIO;
@@ -113,7 +113,7 @@ export abstract class Joint {
   }
 
   /**
-   * 由两个刚体上的局部 X 轴构造两组局部坐标系（原版 buildLocalBasesFromX）：
+   * 由两个刚体上的局部 X 轴构造两组局部坐标系：
    * 刚体 1 的 Y、Z 取和 X1 垂直的任意方向，刚体 2 的坐标系是刚体 1 的绕最短弧从 X1 转到 X2
    */
   protected buildLocalBasesFromX(): void {
@@ -151,7 +151,7 @@ export abstract class Joint {
   }
 
   /**
-   * 由刚体 1 的局部 X 轴、刚体 2 的局部 Z 轴构造两组局部坐标系（原版 buildLocalBasesFromX1Z2，万向节用）：
+   * 由刚体 1 的局部 X 轴、刚体 2 的局部 Z 轴构造两组局部坐标系（万向节用）：
    * 按刚体当前的朝向算出世界坐标的 Y = Z2 × X1（平行时取和 X1 垂直的方向），再补齐两组坐标系
    */
   protected buildLocalBasesFromX1Z2(): void {
@@ -260,7 +260,7 @@ export abstract class Joint {
   }
 
   /**
-   * 填一行平移方向的约束（原版 setSolverInfoRowLinear）：限制、马达、弹簧。
+   * 填一行平移方向的约束：限制、马达、弹簧。
    * diff 是当前位移；mass 是沿这个方向的有效质量（马达和弹簧用）
    */
   protected setSolverInfoRowLinear(
@@ -314,7 +314,7 @@ export abstract class Joint {
   }
 
   /**
-   * 填一行转动方向的约束（原版 setSolverInfoRowAngular）：限制、马达、弹簧。
+   * 填一行转动方向的约束：限制、马达、弹簧。
    * diff 是当前转角，先换算到 [限制中点 - π, 限制中点 + π]；mass 是绕这个轴的有效转动惯量（马达和弹簧用）
    */
   protected setSolverInfoRowAngular(
@@ -341,7 +341,7 @@ export abstract class Joint {
       else row.motor(0, 0);
     }
     const lower = lm.lowerLimit, upper = lm.upperLimit;
-    // 原版的 π、2π 是截断的 3.14159265358979、6.28318530717958
+    // π、2π 是截断的 3.14159265358979、6.28318530717958
     const mid = (lower + upper) * 0.5;
     diff -= mid;
     diff = ((diff + 3.14159265358979) % 6.28318530717958 + 6.28318530717958) % 6.28318530717958 - 3.14159265358979;
@@ -380,7 +380,7 @@ export abstract class Joint {
   }
 
   /**
-   * 两个刚体绕世界坐标的单位轴 axis 转动的有效转动惯量（原版 computeEffectiveInertiaMoment）。
+   * 两个刚体绕世界坐标的单位轴 axis 转动的有效转动惯量。
    * 锚点不在重心上时，把绕锚点转动需要的平动也算进去
    */
   protected computeEffectiveInertiaMoment(axisX: number, axisY: number, axisZ: number): number {
@@ -412,7 +412,7 @@ export abstract class Joint {
     return invI1 + invI2 === 0 ? 0 : 1 / (invI1 + invI2);
   }
 
-  /** 热启动时上一步冲量保留的比例（原版 _getWarmStartingFactor） */
+  /** 热启动时上一步冲量保留的比例 */
   getWarmStartingFactor(): number {
     return this.positionCorrectionAlgorithm === PositionCorrectionAlgorithm.BAUMGARTE
       ? JOINT_WARM_STARTING_FACTOR_FOR_BAUMGARTE
@@ -457,14 +457,14 @@ export abstract class Joint {
     info.numRows = 0;
   }
 
-  /** 位置修正要用的约束行（原版 _getPositionSolverInfo） */
+  /** 位置修正要用的约束行 */
   getPositionSolverInfo(info: JointSolverInfo): void {
     info.b1 = this.b1;
     info.b2 = this.b2;
     info.numRows = 0;
   }
 
-  /** 约束力或力矩超过阈值时把关节从世界里删掉（原版 _checkDestruction） */
+  /** 约束力或力矩超过阈值时把关节从世界里删掉 */
   checkDestruction(): void {
     const forceSq = this.appliedForceX * this.appliedForceX + this.appliedForceY * this.appliedForceY + this.appliedForceZ * this.appliedForceZ;
     const torqueSq = this.appliedTorqueX * this.appliedTorqueX + this.appliedTorqueY * this.appliedTorqueY + this.appliedTorqueZ * this.appliedTorqueZ;
@@ -478,7 +478,7 @@ export abstract class Joint {
     }
   }
 
-  /** 挂到两个刚体的关节链表上，并唤醒它们（原版 _attachLinks） */
+  /** 挂到两个刚体的关节链表上，并唤醒它们 */
   attachLinks(): void {
     const b1 = this.b1, b2 = this.b2, l1 = this.link1, l2 = this.link2;
     l1.other = b2;
@@ -505,7 +505,7 @@ export abstract class Joint {
     b2.wakeUp();
   }
 
-  /** 从两个刚体的关节链表上摘下来，并唤醒它们（原版 _detachLinks） */
+  /** 从两个刚体的关节链表上摘下来，并唤醒它们 */
   detachLinks(): void {
     const b1 = this.b1, b2 = this.b2;
     removeLink(b1, this.link1);

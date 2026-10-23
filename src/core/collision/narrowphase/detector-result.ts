@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/narrowphase/{DetectorResult,DetectorResultPoint}.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/narrowphase/{DetectorResult,DetectorResultPoint}.hx（MIT，见 Credits.md）
 import { MAX_MANIFOLD_POINTS } from "../../settings.js";
 
 /** 一个接触点：两个几何体上各自的最近点（世界坐标）和重叠深度 */
@@ -27,7 +27,7 @@ export class DetectorResult {
   nz = 0;
   /**
    * true：每次只给出 1 个接触点，要和流形里已有的点合并（GJK/EPA）。
-   * false：每次给出完整的流形，直接替换。由检测器设置，clear() 不动它（和原版一样）
+   * false：每次给出完整的流形，直接替换。由检测器设置，clear() 不动它
    */
   incremental = false;
 

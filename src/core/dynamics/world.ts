@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/World.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/World.hx（MIT，见 Credits.md）
 import type { BroadPhase, BroadPhaseProxyCallback } from "../collision/broadphase/broad-phase.js";
 import { BruteForceBroadPhase } from "../collision/broadphase/brute-force-broad-phase.js";
 import { BvhBroadPhase } from "../collision/broadphase/bvh-broad-phase.js";
@@ -270,7 +270,7 @@ export class World {
     this.broadPhase.aabbTest(aabb, w);
   }
 
-  /** 形状加入世界：在宽相里创建代理（原版 _addShape） */
+  /** 形状加入世界：在宽相里创建代理 */
   addShape(shape: Shape): void {
     shape.proxy = this.broadPhase.createProxy(shape, shape.aabb);
     shape.id = this.shapeIdCount++;
@@ -517,7 +517,7 @@ export class World {
   }
 }
 
-/** 宽相粗筛出的代理，再用形状的几何体做精确求交（原版 World.RayCastWrapper） */
+/** 宽相粗筛出的代理，再用形状的几何体做精确求交 */
 class RayCastWrapper implements BroadPhaseProxyCallback {
   readonly rayCastHit = new RayCastHit();
   beginX = 0;
@@ -536,7 +536,7 @@ class RayCastWrapper implements BroadPhaseProxyCallback {
   }
 }
 
-/** 宽相粗筛出的代理，再用 GJK 做精确的凸体扫掠（原版 World.ConvexCastWrapper） */
+/** 宽相粗筛出的代理，再用 GJK 做精确的凸体扫掠 */
 class ConvexCastWrapper implements BroadPhaseProxyCallback {
   readonly rayCastHit = new RayCastHit();
   readonly begin = new Transform();
@@ -556,7 +556,7 @@ class ConvexCastWrapper implements BroadPhaseProxyCallback {
   }
 }
 
-/** BVH 的代理包围盒是加厚过的，这里再用形状自己的包围盒过滤一次（原版 World.AabbTestWrapper） */
+/** BVH 的代理包围盒是加厚过的，这里再用形状自己的包围盒过滤一次 */
 class AabbTestWrapper implements BroadPhaseProxyCallback {
   readonly aabb = new Aabb();
   callback: AabbTestCallback | null = null;

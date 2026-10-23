@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/rigidbody/ShapeConfig.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/rigidbody/ShapeConfig.hx（MIT，见 Credits.md）
 import type { Geometry } from "../../collision/geometry/geometry.js";
 import { Transform } from "../../common/transform.js";
 import {

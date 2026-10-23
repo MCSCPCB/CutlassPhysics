@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/PositionCorrectionAlgorithm.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/PositionCorrectionAlgorithm.hx（MIT，见 Credits.md）
 
 /** 约束的位置修正算法，编号和 Oimo 一致 */
 export const PositionCorrectionAlgorithm = {

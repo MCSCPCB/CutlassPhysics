@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/narrowphase/CollisionMatrix.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/narrowphase/CollisionMatrix.hx（MIT，见 Credits.md）
 import { GeometryType } from "../geometry/geometry.js";
 import { BoxBoxDetector } from "./box-box-detector.js";
 import { CapsuleCapsuleDetector } from "./capsule-capsule-detector.js";

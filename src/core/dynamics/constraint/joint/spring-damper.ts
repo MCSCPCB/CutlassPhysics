@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/SpringDamper.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/SpringDamper.hx（MIT，见 Credits.md）
 
 /** 弹簧阻尼：frequency 为 0 时约束是硬的，大于 0 时约束变软（像弹簧） */
 export class SpringDamper {

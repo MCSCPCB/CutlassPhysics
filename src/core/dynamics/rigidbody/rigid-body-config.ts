@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/rigidbody/{RigidBodyConfig,RigidBodyType}.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/rigidbody/{RigidBodyConfig,RigidBodyType}.hx（MIT，见 Credits.md）
 import { Transform } from "../../common/transform.js";
 import {
   SLEEPING_ANGULAR_VELOCITY_THRESHOLD,

@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/ContactManager.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/ContactManager.hx（MIT，见 Credits.md）
 import type { BroadPhase } from "../collision/broadphase/broad-phase.js";
 import { CollisionMatrix } from "../collision/narrowphase/collision-matrix.js";
 import { Contact } from "./contact.js";
@@ -39,7 +39,7 @@ export class ContactManager {
     this.broadPhase = broadPhase;
   }
 
-  /** 宽相：收集重叠的代理对，创建新接触，销毁过期的接触（原版 _updateContacts） */
+  /** 宽相：收集重叠的代理对，创建新接触，销毁过期的接触 */
   updateContacts(): void {
     this.broadPhase.collectPairs();
     this.createContacts();
@@ -49,7 +49,7 @@ export class ContactManager {
   /** 预测接触模式。窄相仅更新流形，touching 和事件由求解后的 updateTouching 更新。 */
   speculative = false;
 
-  /** 窄相：更新不需要跳过的接触的流形（原版 _updateManifolds） */
+  /** 窄相：更新不需要跳过的接触的流形 */
   updateManifolds(): void {
     const listener = this.listener;
     if (this.speculative) {

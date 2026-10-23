@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/broadphase/bvh/{BvhNode,BvhProxy,BvhTree,BvhStrategy}.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/broadphase/bvh/{BvhNode,BvhProxy,BvhTree,BvhStrategy}.hx（MIT，见 Credits.md）
 // 使用 SIMPLE 插入策略，不执行平衡旋转或整树重建。
 import { Proxy } from "./proxy.js";
 
@@ -66,7 +66,7 @@ export class BvhTree {
       this.root = leaf;
       return;
     }
-    // 从根往下找插入位置：每次走向中心离叶子更近的子节点（原版 decideInsertionSimple）
+    // 从根往下找插入位置：每次走向中心离叶子更近的子节点
     const cX = leaf.minX + leaf.maxX, cY = leaf.minY + leaf.maxY, cZ = leaf.minZ + leaf.maxZ;
     let sibling = this.root;
     while (sibling.height > 0) {
@@ -111,7 +111,7 @@ export class BvhTree {
     this.fixUpward(grandParent);
   }
 
-  /** 从 node 往上逐层更新高度和包围盒（原版 _computeHeight、_computeAabb） */
+  /** 从 node 往上逐层更新高度和包围盒 */
   private fixUpward(start: BvhNode): void {
     for (let node: BvhNode | null = start; node !== null; node = node.parent) {
       const c1 = node.child0!, c2 = node.child1!;

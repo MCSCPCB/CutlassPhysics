@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/BoxBoxDetector.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/narrowphase/detector/BoxBoxDetector.hx（MIT，见 Credits.md）
 // SAT 使用 6 根面轴和 9 根棱轴，选择最小穿透方向。
 // 棱接触生成 1 个点，面裁剪最多生成 4 个点。
 // LINEAR_SLOP 偏置优先选择面轴和 box1，稳定接触法线。
@@ -62,7 +62,7 @@ export class BoxBoxDetector extends Detector {
     let dx: number, dy: number, dz: number;
     let eX: number, eY: number, eZ: number, l: number;
 
-    // ---- 6 根面轴（原版 satCheck 宏展开：不重叠就是分离轴，直接返回）----
+    // ---- 6 根面轴（不重叠就是分离轴，直接返回）----
     // x1
     dx = x1X * sx2X + x1Y * sx2Y + x1Z * sx2Z; if (dx < 0) dx = -dx;
     dy = x1X * sy2X + x1Y * sy2Y + x1Z * sy2Z; if (dy < 0) dy = -dy;
@@ -294,7 +294,7 @@ export class BoxBoxDetector extends Detector {
       if (depth < mDepth) { mDepth = depth; mId = 14; mAxisX = eX; mAxisY = eY; mAxisZ = eZ; mSign = neg ? -1 : 1; }
     }
 
-    // ---- 棱对棱：两条棱的最近点作为唯一的接触点（编号固定为 4，和原版一致）----
+    // ---- 棱对棱：两条棱的最近点作为唯一的接触点（编号固定为 4）----
     if (mId >= 6) {
       // 让轴从 box1 指向 box2
       mAxisX *= mSign; mAxisY *= mSign; mAxisZ *= mSign;
@@ -310,7 +310,7 @@ export class BoxBoxDetector extends Detector {
       else if (id2 === 1) { e2X = y2X; e2Y = y2Y; e2Z = y2Z; a2X = sx2X; a2Y = sx2Y; a2Z = sx2Z; b2X = sz2X; b2Y = sz2Y; b2Z = sz2Z; }
       else { e2X = z2X; e2Y = z2Y; e2Z = z2Z; a2X = sx2X; a2Y = sx2Y; a2Z = sx2Z; b2X = sy2X; b2Y = sy2Y; b2Z = sy2Z; }
 
-      // 棱上一点：a、b 张成的矩形上沿轴最远的顶点（原版 supportingVertexRect）。box1 用 c1 + 顶点，box2 用 c2 - 顶点
+      // 棱上一点：a、b 张成的矩形上沿轴最远的顶点。box1 用 c1 + 顶点，box2 用 c2 - 顶点
       let sa = a1X * mAxisX + a1Y * mAxisY + a1Z * mAxisZ > 0;
       let sb = b1X * mAxisX + b1Y * mAxisY + b1Z * mAxisZ > 0;
       let p1X: number, p1Y: number, p1Z: number;
@@ -382,7 +382,7 @@ export class BoxBoxDetector extends Detector {
     // 参考面中心转成世界坐标
     refCX += c1X; refCY += c1Y; refCZ += c1Z;
 
-    // 入射面：box2 上和参考面法线最“相对”的面（依次比较 x+、x-、y+、y-、z+、z-，和原版一致）
+    // 入射面：box2 上和参考面法线最“相对”的面（依次比较 x+、x-、y+、y-、z+、z-）
     let minIncDot = 1;
     let incId = 0;
     let incDot = refNX * x2X + refNY * x2Y + refNZ * x2Z;
@@ -395,7 +395,7 @@ export class BoxBoxDetector extends Detector {
     if (incDot < minIncDot) { minIncDot = incDot; incId = 4; }
     if (-incDot < minIncDot) incId = 5;
 
-    // 入射面的 4 个顶点（相对 box2 中心，顺序和原版 getBoxFace 一致），再平移到相对 box1 中心
+    // 入射面的 4 个顶点（相对 box2 中心），再平移到相对 box1 中心
     let v1X: number, v1Y: number, v1Z: number, v2X: number, v2Y: number, v2Z: number;
     let v3X: number, v3Y: number, v3Z: number, v4X: number, v4Y: number, v4Z: number;
     switch (incId) {

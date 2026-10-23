@@ -1,0 +1,113 @@
+{
+  "format_version": "1.20.30",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "cutlass:physics_block",
+      "is_spawnable": false,
+      "is_summonable": true,
+      "properties": {
+        "cutlass:scale": {
+          "type": "float",
+          "range": [
+            -512.0,
+            512.0
+          ],
+          "default": "0",
+          "client_sync": true
+        },
+        "cutlass:local_pitch": {
+          "type": "float",
+          "range": [
+            -512.0,
+            512.0
+          ],
+          "default": "0",
+          "client_sync": true
+        },
+        "cutlass:local_yaw": {
+          "type": "float",
+          "range": [
+            -512.0,
+            512.0
+          ],
+          "default": "0",
+          "client_sync": true
+        },
+        "cutlass:local_roll": {
+          "type": "float",
+          "range": [
+            -512.0,
+            512.0
+          ],
+          "default": "0",
+          "client_sync": true
+        },
+        "cutlass:local_x": {
+          "type": "float",
+          "range": [
+            -512.0,
+            512.0
+          ],
+          "default": "0",
+          "client_sync": true
+        },
+        "cutlass:local_y": {
+          "type": "float",
+          "range": [
+            -512.0,
+            512.0
+          ],
+          "default": "0",
+          "client_sync": true
+        },
+        "cutlass:local_z": {
+          "type": "float",
+          "range": [
+            -512.0,
+            512.0
+          ],
+          "default": "0",
+          "client_sync": true
+        }
+      }
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": [
+          "cutlass_physics_block",
+          "inanimate"
+        ]
+      },
+      "minecraft:health": {
+        "value": 1,
+        "max": 1
+      },
+      "minecraft:damage_sensor": {
+        "triggers": [
+          {
+            "cause": "all",
+            "deals_damage": false
+          }
+        ]
+      },
+      "minecraft:collision_box": {
+        "height": 1,
+        "width": 1
+      },
+      "minecraft:pushable": {
+        "is_pushable": false,
+        "is_pushable_by_piston": false
+      },
+      "minecraft:persistent": {},
+      "minecraft:physics": {
+        "has_collision": false,
+        "has_gravity": false
+      },
+      "minecraft:conditional_bandwidth_optimization": {
+        "conditional_values": [],
+        "default_values": {}
+      },
+      "minecraft:equipment": {}
+    }
+  }
+}

@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/collision/broadphase/bruteforce/BruteForceBroadPhase.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/collision/broadphase/bruteforce/BruteForceBroadPhase.hx（MIT，见 Credits.md）
 import type { Transform } from "../../common/transform.js";
 import type { Vec3 } from "../../common/vec3.js";
 import type { Aabb } from "../geometry/aabb.js";

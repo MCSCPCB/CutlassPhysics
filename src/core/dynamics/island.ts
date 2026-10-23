@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/Island.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/Island.hx（MIT，见 Credits.md）
 import type { ConstraintSolver } from "./constraint/constraint-solver.js";
 import { PositionCorrectionAlgorithm } from "./constraint/position-correction-algorithm.js";
 import type { Softness, SoftContactSolver } from "./constraint/solver/soft-contact-solver.js";
@@ -103,7 +103,7 @@ export class Island {
     this.softContacts.push(solver);
   }
 
-  /** 单独一个刚体（没有接触）的一步（原版 _stepSingleRigidBody） */
+  /** 单独一个刚体（没有接触）的一步 */
   stepSingleRigidBody(timeStep: TimeStep, rb: RigidBody): void {
     const dt = timeStep.dt;
     rb.ptransform.copyFrom(rb.transform);
@@ -122,7 +122,7 @@ export class Island {
     rb.syncShapes();
   }
 
-  /** 多个刚体和约束的一步（原版 _step）：速度求解 → 积分 → 位置修正 */
+  /** 多个刚体和约束的一步：速度求解 → 积分 → 位置修正 */
   step(timeStep: TimeStep, numVelocityIterations: number, numPositionIterations: number): void {
     const dt = timeStep.dt, bodies = this.rigidBodies, solvers = this.solvers, solversSi = this.solversSi, solversNgs = this.solversNgs;
     let sleepIsland = true;
@@ -218,7 +218,7 @@ export class Island {
       else for (let i = 0; i < contacts.length; i++) contacts[i].solve(false, false, invDt, dynamic, fixed, maxPushVelocity);
     }
     for (let i = 0; i < contacts.length; i++) contacts[i].applyRestitution();
-    // 关节的位置修正（和原版流程一样）
+    // 关节的位置修正
     for (let i = 0; i < jointsSi.length; i++) jointsSi[i].preSolvePosition(timeStep);
     for (let t = 0; t < numPositionIterations; t++) {
       for (let i = 0; i < jointsSi.length; i++) jointsSi[i].solvePositionSplitImpulse();
@@ -311,7 +311,7 @@ export class Island {
           for (let i = 0; i < contacts.length; i++) if (t === 0 || contacts[i].impacted) contacts[i].solve(false, false, invH, dynamic, fixed, push, reuse);
         }
       }
-      // 关节的位置修正（和原版流程一样，每个子步一次）
+      // 关节的位置修正（每个子步一次）
       for (let i = 0; i < jointsSi.length; i++) jointsSi[i].preSolvePosition(sub);
       for (let t = 0; t < p.positionIterations; t++) {
         for (let i = 0; i < jointsSi.length; i++) jointsSi[i].solvePositionSplitImpulse();

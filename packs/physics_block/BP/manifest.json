@@ -1,0 +1,54 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Cutlass 方块物理 行为包",
+    "description": "基于实体手持物品的方块物理",
+    "uuid": "474deea8-d48f-49a0-8e07-7b5ba18b0367",
+    "version": [
+      0,
+      0,
+      1
+    ],
+    "min_engine_version": [
+      1,
+      26,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "af9b543c-b132-4faa-a598-290a163cf86e",
+      "version": [
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "4587e8c4-4064-4219-a254-3a5f034154d6",
+      "version": [
+        0,
+        0,
+        1
+      ],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "alpha"
+    },
+    {
+      "uuid": "1bc6abf6-2ee0-45c1-8e27-f4f3e5746dbb",
+      "version": [
+        0,
+        0,
+        1
+      ]
+    }
+  ]
+}

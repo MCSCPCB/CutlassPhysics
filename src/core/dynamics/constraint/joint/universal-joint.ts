@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/{UniversalJoint,UniversalJointConfig}.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/{UniversalJoint,UniversalJointConfig}.hx（MIT，见 Credits.md）
 import { Vec3 } from "../../../common/vec3.js";
 import type { RigidBody } from "../../rigidbody/rigid-body.js";
 import type { TimeStep } from "../../time-step.js";
@@ -124,7 +124,7 @@ export class UniversalJoint extends Joint {
     }
   }
 
-  /** 同步锚点和坐标系，然后更新约束方向、欧拉角和偏差（原版 _syncAnchors + updateConstraintAxes + computeErrors） */
+  /** 同步锚点和坐标系，然后更新约束方向、欧拉角和偏差 */
   override syncAnchors(): void {
     super.syncAnchors();
 
@@ -157,7 +157,7 @@ export class UniversalJoint extends Joint {
     const m12 = this.bY1X * this.bZ2X + this.bY1Y * this.bZ2Y + this.bY1Z * this.bZ2Z;
     const m21 = this.bZ1X * this.bY2X + this.bZ1Y * this.bY2Y + this.bZ1Z * this.bY2Z;
     const m22 = this.bZ1X * this.bZ2X + this.bZ1Y * this.bZ2Y + this.bZ1Z * this.bZ2Z;
-    // 旋转矩阵转 XYZ 欧拉角（原版 mat3_toEulerXyz）。原版的 π/2 是截断的 1.570796326794895
+    // 旋转矩阵转 XYZ 欧拉角。π/2 是截断的 1.570796326794895
     const sy = m02;
     if (sy <= -1) {
       const xSubZ = Math.atan2(m21, m11);

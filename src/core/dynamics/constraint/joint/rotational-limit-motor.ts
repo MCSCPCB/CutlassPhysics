@@ -1,4 +1,4 @@
-// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/RotationalLimitMotor.hx（MIT，见 THIRD-PARTY-NOTICES.txt）
+// 移植自 OimoPhysics src/oimo/dynamics/constraint/joint/RotationalLimitMotor.hx（MIT，见 Credits.md）
 
 /** 关节转动方向的限制和马达 */
 export class RotationalLimitMotor {
