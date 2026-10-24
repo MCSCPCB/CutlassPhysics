@@ -18,7 +18,6 @@
       "animations": {
         "input": "animation.cutlass.fancy.input",
         "rotation": "animation.cutlass.block.rotation",
-        "scale": "animation.cutlass.block.scale",
         "item_scale": "animation.cutlass.block.item_scale"
       },
       "scripts": {
@@ -39,7 +38,6 @@
         ],
         "animate": [
           "rotation",
-          "scale",
           "item_scale"
         ],
         "pre_animation": [

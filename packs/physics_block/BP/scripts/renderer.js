@@ -13,7 +13,6 @@ export class Renderer {
     this.byEntity = new Map();
     this.poses = new WeakMap();
     this.records = new WeakMap();
-    this.retiring = new Map();
   }
 
   add(record) {
@@ -21,7 +20,6 @@ export class Renderer {
     this.records.set(record, state);
     for (const cell of record.data.cells) {
       const existing = this.entries.get(cell.id);
-      if (existing) this.clearRetired(existing);
       const entry = { ...existing, record, cell, dirty: true };
       this.entries.set(cell.id, entry);
       state.entries.push(entry);
@@ -40,15 +38,9 @@ export class Renderer {
       entry.entity.clearVelocity();
       entry.entity.teleport(entry.pose.worldAnchor, { rotation: { x: 0, y: 0 } });
     }
-    for (const { entity, anchor } of this.retiring.values()) {
-      if (!entity.isValid) continue;
-      entity.clearVelocity();
-      entity.teleport(anchor, { rotation: { x: 0, y: 0 } });
-    }
   }
 
   attach(entity) {
-    if (this.retiring.has(entity.id)) return;
     const entry = this.entries.get(entity.getDynamicProperty(CELL_PROPERTY));
     if (!entry || (entry.entity?.isValid && entry.entity.id !== entity.id)) {
       entity.remove();
@@ -59,25 +51,6 @@ export class Renderer {
     entry.dirty = true;
     this.records.get(entry.record).dirty = true;
     this.records.get(entry.record).retryAt = 0;
-  }
-
-  retain(entry, entity) {
-    const { pose, generation, worldAnchor: anchor } = entry;
-    if (!entity.isValid) return;
-    const retired = { entity, pose, generation, anchor };
-    entry.retired ??= new Set();
-    entry.retired.add(retired);
-    this.retiring.set(entity.id, retired);
-    // 临时显示实体不参与存档恢复的方块绑定。
-    entity.setDynamicProperty(CELL_PROPERTY, undefined);
-    pose.retainModel(entity, generation, anchor, () => {
-      entry.retired.delete(retired);
-      this.retiring.delete(entity.id);
-    });
-  }
-
-  clearRetired(entry) {
-    for (const { entity, pose, generation } of entry.retired ?? []) pose.removeRetiredModel(entity, generation);
   }
 
   poseFor(record) {
@@ -155,7 +128,7 @@ export class Renderer {
       }
     }
     if (entries.length && !required && !this.dimension.isChunkLoaded(record.body.location)) { state.retryAt = system.currentTick + 20; return; }
-    const retired = [], added = [];
+    const added = [];
     try {
       for (const entry of entries) {
         const cell = entry.cell;
@@ -173,11 +146,11 @@ export class Renderer {
           if (old) {
             this.byEntity.delete(old.id);
             entry.pose?.removeModel(old);
-            if (entry.pose === pose) this.retain(entry, old);
-            else retired.push(old);
+            if (old.isValid) old.remove();
           }
         } else {
           // 存档恢复时清除实体上一次会话的插值状态。
+          old.setProperty("cutlass:scale", 0);
           old.teleport(pose.worldAnchor, { rotation: { x: 0, y: 0 } });
           old.clearVelocity();
           this.configure(entry, pose);
@@ -186,7 +159,6 @@ export class Renderer {
         entry.entity.setProperty("cutlass:scale", 0);
         entry.pose = pose;
         entry.generation = pose.anchorRevision;
-        entry.worldAnchor = pose.worldAnchor;
         entry.dirty = false;
         this.byEntity.set(entry.entity.id, entry);
         pose.addModel(entry.entity);
@@ -200,9 +172,7 @@ export class Renderer {
       for (const { entry } of added) entry.dirty = true;
       throw error;
     } finally {
-      if (added.length || retired.length) pose.deferAnchorCommit(() => {
-        for (const entity of retired) if (entity.isValid) entity.remove();
-      }, () => {
+      if (added.length) pose.deferAnchorCommit(() => {
         if (!record.body.isValid) return;
         if (state.dirty) return false;
         pose.sampleForRender(true);
@@ -211,7 +181,6 @@ export class Renderer {
         for (const { entry, entity } of added) {
           if (entry.entity === entity && !entry.dirty && entity.isValid) entity.setProperty("cutlass:scale", 1);
         }
-        pose.releaseRetiredModels();
       });
     }
     if (added.length) pose.refreshAfterSpawn(() => record.body.isValid);
@@ -221,7 +190,6 @@ export class Renderer {
   removeCell(id) {
     const entry = this.entries.get(id);
     this.entries.delete(id);
-    if (entry) this.clearRetired(entry);
     if (entry?.entity) {
       entry.pose?.removeModel(entry.entity);
       this.byEntity.delete(entry.entity.id);

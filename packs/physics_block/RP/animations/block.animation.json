@@ -68,14 +68,6 @@
         }
       }
     },
-    "animation.cutlass.block.scale": {
-      "loop": true,
-      "bones": {
-        "root": {
-          "scale": "v.pose_ready"
-        }
-      }
-    },
     "animation.cutlass.block.item_scale": {
       "loop": true,
       "bones": {

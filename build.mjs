@@ -51,4 +51,6 @@ if (args.length) {
       }
     }
   }
+  const privateBuild = new URL("./tools/build-private-packs.mjs", import.meta.url);
+  if (existsSync(privateBuild)) await (await import(privateBuild.href)).buildPrivatePacks(args[0]);
 }

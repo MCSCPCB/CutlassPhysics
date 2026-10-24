@@ -11,7 +11,6 @@ const WORLD_ANCHOR_DISTANCE = 14;
 const WORLD_ANCHOR_LARGE_DISTANCE = 28;
 const WORLD_ANCHOR_CHECK_TICKS = 20;
 const WORLD_ANCHOR_LIGHT_TICKS = 80;
-const WORLD_ANCHOR_OVERLAP_TICKS = 12;
 const WORLD_ANCHOR_OFFSETS = [
   [0, 0, 0],
   [0, 1, 0],
@@ -58,7 +57,6 @@ class RenderPose {
   #publishedGeneration = -1;
   #renderSampleTick = -1;
   #anchorCommits = [];
-  #retiring = new Map();
   get input() {
     return this.#input;
   }
@@ -89,54 +87,6 @@ class RenderPose {
     this.#models.delete(entity.id);
     this.#modelRevision++;
   }
-  retainModel(entity, generation, anchor, release) {
-    let group = this.#retiring.get(generation);
-    if (!group) {
-      group = { anchor, models: new Map(), serial: -1, tick: -1, retryAt: 0, timer: undefined };
-      this.#retiring.set(generation, group);
-    }
-    group.models.set(entity.id, { entity, release });
-  }
-  removeRetiredModel(entity, generation) {
-    const group = this.#retiring.get(generation), model = group?.models.get(entity.id);
-    if (!model) return;
-    group.models.delete(entity.id);
-    if (group.models.size === 0) {
-      if (group.timer !== undefined) system.clearRun(group.timer);
-      this.#retiring.delete(generation);
-    }
-    if (entity.isValid) entity.remove();
-    model.release();
-  }
-  releaseRetiredModels() {
-    for (const [generation, group] of this.#retiring) {
-      if (group.timer !== undefined) continue;
-      group.timer = system.runTimeout(() => {
-        for (const { entity } of group.models.values()) this.removeRetiredModel(entity, generation);
-      }, WORLD_ANCHOR_OVERLAP_TICKS);
-    }
-  }
-  // 旧实体沿用原锚点，姿态时钟与新实体共用。
-  publishRetired(input, force) {
-    for (const [generation, group] of this.#retiring) {
-      if (system.currentTick < group.retryAt || (group.serial === input.pose_serial && (group.tick === system.currentTick || (!force && system.currentTick - group.tick < RENDER_INPUT_REFRESH_TICKS)))) continue;
-      const values = {
-        ...input,
-        pose_cx: input.pose_cx + this.#worldAnchor.x - group.anchor.x,
-        pose_cy: input.pose_cy + this.#worldAnchor.y - group.anchor.y,
-        pose_cz: input.pose_cz + this.#worldAnchor.z - group.anchor.z,
-      };
-      try {
-        const result = this.dimension.runCommand(`playanimation @e[type=cutlass:physics_block,tag=${this.#tag}_${generation}] ${RENDER_INPUT_ANIMATION} none 0 "${renderInputExpression(values)}" cutlass_pose`);
-        if (result.successCount === 0) { group.retryAt = system.currentTick + 20; continue; }
-      } catch {
-        group.retryAt = system.currentTick + 20;
-        continue;
-      }
-      group.serial = input.pose_serial;
-      group.tick = system.currentTick;
-    }
-  }
   refreshAfterSpawn(isValid) {
     for (const delay of INITIAL_RENDER_INPUT_REFRESH_TICKS) {
       const tick = system.currentTick + delay;
@@ -151,7 +101,6 @@ class RenderPose {
   // 持续控制器向后来进入视野的客户端提供姿态。
   publish(force = false) {
     const input = this.sample();
-    if (this.#retiring.size) this.publishRetired(input, force);
     const unchanged = this.#publishedSerial === input.pose_serial && this.#publishedGeneration === this.#anchorRevision && this.#publishedModels === this.#modelRevision;
     if (unchanged && this.#publishedTick === system.currentTick) return 0;
     if (!force && unchanged && system.currentTick - this.#publishedTick < RENDER_INPUT_REFRESH_TICKS) return 0;
@@ -169,20 +118,19 @@ class RenderPose {
     this.#publishedModels = this.#modelRevision;
     return 1;
   }
-  // 新姿态发布成功后完成交接；旧锚点实体另行延后清理。
-  deferAnchorCommit(retire, reveal) {
-    this.#anchorCommits.push({ retire, reveal });
+  // 隐藏一 tick 后发布姿态并显示。
+  deferAnchorCommit(reveal) {
+    this.#anchorCommits.push({ reveal });
     if (this.#anchorCommits.length > 1) return;
     const commit = () => {
       const commits = this.#anchorCommits;
       this.#anchorCommits = [];
       for (const entry of commits) {
         if (entry.reveal() === false) this.#anchorCommits.push(entry);
-        else entry.retire();
       }
       if (this.#anchorCommits.length) system.runTimeout(commit, 1);
     };
-    system.run(commit);
+    system.runTimeout(commit, 1);
   }
   // 每 tick 统一更新结构的显示锚点。
   updateWorldAnchor(position) {

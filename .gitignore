@@ -2,6 +2,9 @@
 !/src/
 !/examples/
 !/packs/
+/packs/*
+!/packs/debugline/
+!/packs/physics_block/
 !/docs/
 !/README.md
 !/LICENSE
